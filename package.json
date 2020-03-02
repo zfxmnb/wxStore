@@ -5,7 +5,7 @@
     "main": "wxStore.es5.js",
     "repository": {
       "type": "git",
-      "url": "git+https://github.com/zfxmnb/weStore.git"
+      "url": "git+https://github.com/zfxmnb/wxStore.git"
     },
     "keywords": [
       "wechat",
