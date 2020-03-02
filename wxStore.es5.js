@@ -403,10 +403,15 @@ function diff(current, pre) {
   var performance = arguments.length > 3 ? arguments[3] : undefined;
   var diffObj = {};
 
-  if (type(pre, ARRAY) && type(current, ARRAY) && performance && current.length > pre.length) {
-    // 性能模式下的数组
-    for (var i = pre.length; i < current.length; i++) {
-      diffObj["".concat(prefix, "[").concat(i, "]")] = current[i];
+  if (type(pre, ARRAY) && type(current, ARRAY)) {
+    if (performance && current.length > pre.length) {
+      // 性能模式下数组push
+      for (var i = pre.length; i < current.length; i++) {
+        diffObj["".concat(prefix, "[").concat(i, "]")] = current[i];
+      }
+    } else {
+      // 其他情况数组
+      diffObj[prefix] = current;
     }
   } else if (type(pre, OBJECT) && type(current, OBJECT)) {
     // 对象
