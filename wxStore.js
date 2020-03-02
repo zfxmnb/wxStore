@@ -279,11 +279,17 @@ function setOptions(options) {
  */
 export function diff(current, pre, prefix = '', performance) {
   const diffObj = {}
-  if (type(pre, ARRAY) && type(current, ARRAY) && performance && current.length > pre.length) {
-    // 性能模式下的数组
-    for (let i = pre.length; i < current.length; i++) {
-      diffObj[`${prefix}[${i}]`] = current[i]
+  if (type(pre, ARRAY) && type(current, ARRAY)) {
+    if (performance && current.length > pre.length) {
+      // 性能模式下数组push
+      for (let i = pre.length; i < current.length; i++) {
+        diffObj[`${prefix}[${i}]`] = current[i]
+      }
+    } else {
+      // 其他情况数组
+      diffObj[prefix] = current
     }
+    
   } else if (type(pre, OBJECT) && type(current, OBJECT)) {
     // 对象
     const keys = Object.keys(pre)
