@@ -1,0 +1,5 @@
+
+<view class="tip">10秒内点击绿色区域，每点用1次得1分</view>
+<view class="score">{{ score }}</view>
+<game/>
+<scores/>

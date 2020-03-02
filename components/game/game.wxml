@@ -1,0 +1,5 @@
+<!--components/game/game.wxml-->
+<view class="game" bind:touchstart="click">
+  <text class="time">{{ countTime }}s</text>
+</view>
+<view class="reset {{ statue ? '' : 'disabeld' }}" bindtap="reset">Reset</view>

@@ -1,0 +1,33 @@
+/* components/game/game.wxss */
+.game {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin:0 auto;
+  width: 500rpx;
+  height: 500rpx;
+  background: greenyellow;
+  border-radius: 50%;
+}
+
+.time {
+  font-size: 100rpx;
+  color: #fff;
+}
+
+.reset {
+  margin: 20rpx auto;
+  width: 150rpx;
+  height: 90rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: greenyellow;
+  border-radius: 10rpx;
+  color: #fff;
+}
+
+.reset.disabeld {
+  background: lightgray;
+}

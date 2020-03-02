@@ -1,0 +1,31 @@
+.scores {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+}
+.num {
+  padding: 10rpx;
+  font-size: 30rpx;
+  color: #303030;
+}
+.scroll {
+  margin: 10rpx;
+  height: 400rpx;
+  overflow-y: auto;
+  border: 1rpx solid #bbb;
+}
+.scroll .num:nth-child(2n){
+  background: #eee
+}
+.btn {
+  margin: 20rpx auto;
+  width: 150rpx;
+  height: 90rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: greenyellow;
+  border-radius: 10rpx;
+  color: #fff;
+}

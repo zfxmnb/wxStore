@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "快快点",
+  "usingComponents": {
+    "game": "../components/game/game",
+    "scores": "../components/scores/scores"
+  }
+}

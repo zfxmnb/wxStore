@@ -1,0 +1,6 @@
+<!--components/scores/scores.wxml-->
+<view class="scores">
+  <text class="num">最高：{{maxScore}}</text>
+  <text class="num">平均：{{average}}</text>
+  <text class="num">分数：{{score}}</text>
+</view>

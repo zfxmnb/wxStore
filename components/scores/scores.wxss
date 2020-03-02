@@ -1,0 +1,11 @@
+/* components/scores/scores.wxss */
+.scores {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.num {
+  padding: 20rpx;
+  font-size: 36rpx;
+  color: #303030;
+}

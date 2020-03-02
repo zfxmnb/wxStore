@@ -1,0 +1,10 @@
+.tip {
+  margin: 30px;
+  text-align: center;
+}
+
+.score {
+  text-align: center;
+  font-size: 200rpx;
+  color: lawngreen;
+}
