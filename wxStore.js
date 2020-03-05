@@ -3,7 +3,7 @@
  * 注：1、基础库版本2.7.1
  *    2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
  *    3、setState中有数组时，如果出现非push类型的修改时需要主动关闭performance模式否者可能出现数据错误
- *    4、可在store配置中设置默认是否开始performance模式
+ *    4、actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全体换
  */
 let storeId = 1
 export default class WxStore {
@@ -69,7 +69,7 @@ export default class WxStore {
       // 根据对象key 提取 state 与对于value比对
       for (const keyStr in obj) {
         // 获取diffObj
-        Object.assign(this._diffObj, diff(obj[keyStr], getValue(this._state, keyStr), keyStr), performance)
+        Object.assign(this._diffObj, diff(obj[keyStr], getValue(this._state, keyStr), keyStr, performance))
         // 写入store state
         setValue(this._state, keyStr, obj[keyStr])
       }
@@ -85,27 +85,24 @@ export default class WxStore {
    */
   _update() {
     // Promise 异步实现合并set
-    this._pendding = this._pendding || new Promise((resolve) => {
-      if (noEmptyObject(this._diffObj)) {
-        // 实例更新
-        this._binds.forEach((that) => {
-          // 获取diffObj => 实例的新的diff数据
-          const obj = getMapData(that.__stores[this._id].stateMap, this._diffObj)
-          // set实例对象中
-          noEmptyObject(obj) && that.setData(obj)
-        })
-        // 监听器回调
-        for (const id in this._listener) {
-          // 获取diffObj => 实例的新的diff数据
-          const obj = getMapData(this._listener[id].stateMap, this._diffObj)
-          // 执行回调
-          noEmptyObject(obj) && this._listener[id].cb(obj)
+    this._pendding = this._pendding || Promise.resolve().then(() => {
+        if (noEmptyObject(this._diffObj)) {
+          // 实例更新
+          this._binds.forEach((that) => {
+            // 获取diffObj => 实例的新的diff数据
+            const obj = getMapData(that.__stores[this._id].stateMap, this._diffObj)
+            // set实例对象中
+            noEmptyObject(obj) && that.setData(obj)
+          })
+          // 监听器回调
+          for (const id in this._listener) {
+            // 获取diffObj => 实例的新的diff数据
+            const obj = getMapData(this._listener[id].stateMap, this._diffObj)
+            // 执行回调
+            noEmptyObject(obj) && this._listener[id].cb(obj)
+          }
         }
-      }
-      resolve()
-    })
-      .then(() => {
-        this._debug && console.log(this._diffObj)
+        this._debug && console.log('diff object:', this._diffObj)
         this._diffObj = {} // 清空diff结果
         delete this._pendding // 清除
       })
@@ -294,7 +291,7 @@ export function diff(current, pre, prefix = '', performance) {
     // 对象
     const keys = Object.keys(pre)
     keys.forEach((key) => {
-      Object.assign(diffObj, diff(current[key], pre[key], `${prefix ? `${prefix}.${key}` : key}`), performance)
+      Object.assign(diffObj, diff(current[key], pre[key], `${prefix ? `${prefix}.${key}` : key}`, performance))
     })
   } else if (prefix && current !== pre) {
     // 非数组非对象
@@ -403,6 +400,9 @@ function getValue(state, relKey) {
  */
 function setValue(state, relKey, data) {
   const keys = relKey.match(/(?:(?!\.|\[|\])\S)+/g) || []
+  if (!keys.length) {
+    return
+  }
   let obj = state
   for (let i = 0; i < keys.length; i++) {
     if (i === keys.length - 1) {
@@ -410,6 +410,7 @@ function setValue(state, relKey, data) {
     } else if (obj instanceof Object) {
       obj = obj[keys[i]]
     } else {
+      obj = undefined
       break
     }
   }

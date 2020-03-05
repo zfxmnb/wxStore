@@ -10,8 +10,8 @@ const defaultState = {
   gameCount: 0
 }
 export default new WxStore({
-  // debug: true,
-  // performance: false,
+  // debug: true, // 控制台是否输出diff结果
+  // performance: false, // 是否开启针对push数组的性能优化
   state: localData || defaultState,
   actions: {
     // 更新分数
