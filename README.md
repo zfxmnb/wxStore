@@ -39,7 +39,11 @@ const store = {
 new WxStore(store)
 // storePage、storeComponent不需要单独创建只需传入store配置、stateMap数据映射
 storePage({
-  store,
+  store, // 可以是WxStore对象，也可以是store配置
+  stores: [{
+    store: new WxStore({}), // 必须为WxStore对象
+    stateMap
+  }]
   stateMap: {
     // [页面/组件实例data的key]: [store中state的映射key]
     ab: 'a.b'
@@ -100,15 +104,23 @@ storePage({
 ### 页面实例参考
 ```js
 import { storePage } from '../wxStore'
+import globel from '../store.js'
 import store from './gameStore'
 storePage({
   store,
   stateMap: {
     score: 'count'
   },
+  stores: [{
+    store: globel,
+    stateMap: {
+      maxScore: 'scores.maxScore'
+    }
+  }],
   data: {},
   onLoad () {},
 })
+
 ```
 ### 组件实例参考
 ```js

@@ -205,11 +205,16 @@ var WxStore = /*#__PURE__*/function () {
       }
 
       that.__stores = type(that.__stores, OBJECT) ? that.__stores : {}; // 初始化实例对象上的状态映射表
+      // 映射对象写入实例对象
 
-      that.__stores[this._id] = {
-        stateMap: stateMap,
-        store: this
-      }; // 映射对象写入实例对象
+      if (that.__stores[this._id]) {
+        Object.assign(that.__stores[this._id].stateMap, stateMap);
+      } else {
+        that.__stores[this._id] = {
+          stateMap: stateMap,
+          store: this
+        };
+      }
 
       !this._binds.find(function (item) {
         return item === that;
@@ -292,12 +297,28 @@ function storePage(options) {
   var onLoad = options.onLoad;
 
   options.onLoad = function () {
+    var _this4 = this;
+
     options.stateMap = options.stateMap || {}; // store必须为对象、stateMap必须为obj或arr
 
     if (type(options.store, OBJECT) && (type(options.stateMap, OBJECT) || type(options.stateMap, ARRAY))) {
-      this.$store = new WxStore(options.store); // store 实例话
+      this.$store = options.store instanceof WxStore ? options.store : new WxStore(options.store); // 传入已经是WxStore实例则直接赋值，否者实例化
 
       this.$store.bind(this, options.stateMap, false); // 绑定是不初始化data、在实例生产前已写入options中
+    } // stores 必须为数组
+
+
+    if (type(options.stores, ARRAY)) {
+      options.stores.forEach(function () {
+        var item = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+        // store必须为WxStore对象、stateMap必须为obj或arr
+        var store = item.store,
+            stateMap = item.stateMap;
+
+        if (store instanceof WxStore && (type(stateMap, OBJECT) || type(stateMap, ARRAY))) {
+          store.bind(_this4, stateMap);
+        }
+      });
     }
 
     type(onLoad, FUNCTION) && onLoad.apply(this, [].slice.call(arguments));
@@ -307,7 +328,7 @@ function storePage(options) {
   var onUnload = options.onUnload;
 
   options.onUnload = function () {
-    var _this4 = this;
+    var _this5 = this;
 
     type(onUnload, FUNCTION) && onUnload.apply(this, [].slice.call(arguments)); // 执行卸载操作
     // 解除this上的store的绑定
@@ -315,7 +336,7 @@ function storePage(options) {
     if (noEmptyObject(this.__stores)) {
       var ids = Object.keys(this.__stores);
       ids.forEach(function (id) {
-        _this4.__stores[id].store.unBind(_this4);
+        _this5.__stores[id].store.unBind(_this5);
       });
     }
 
@@ -338,12 +359,27 @@ function storeComponent(options) {
   var ready = opts.ready;
 
   opts.ready = function () {
-    this.$store = getCurrentPage(this).$store || new WxStore({}); // 找到Page中store， 如果无则生产一个空的store
+    var _this6 = this;
 
+    // 传入已经是WxStore实例则直接赋值，否者获取Page的$store
+    this.$store = options.store instanceof WxStore ? options.store : getCurrentPage(this).$store || new WxStore({});
     options.stateMap = options.stateMap || {}; // stateMap必须为Object或Array
 
     if (type(options.stateMap, OBJECT) || type(options.stateMap, ARRAY)) {
       this.$store.bind(this, options.stateMap); // 绑定是不初始化data、在实例生产前已写入options中
+    } // stores 必须为数组
+
+
+    if (type(options.stores, ARRAY)) {
+      options.stores.forEach(function (item) {
+        // store必须为WxStore对象、stateMap必须为obj或arr
+        var store = item.store,
+            stateMap = item.stateMap;
+
+        if (store instanceof WxStore && (type(stateMap, OBJECT) || type(stateMap, ARRAY))) {
+          store.bind(_this6, stateMap);
+        }
+      });
     }
 
     type(ready, FUNCTION) && ready.apply(this, [].slice.call(arguments));
@@ -354,7 +390,7 @@ function storeComponent(options) {
   var detached = opts.detached;
 
   opts.detached = function () {
-    var _this5 = this;
+    var _this7 = this;
 
     type(detached, FUNCTION) && detached.apply(this, [].slice.call(arguments)); // 执行卸载操作
     // 解除this上的store的绑定
@@ -362,7 +398,7 @@ function storeComponent(options) {
     if (noEmptyObject(this.__stores)) {
       var ids = Object.keys(this.__stores);
       ids.forEach(function (id) {
-        _this5.__stores[id].store.unBind(_this5);
+        _this7.__stores[id].store.unBind(_this7);
       });
     }
 

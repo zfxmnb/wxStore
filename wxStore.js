@@ -132,7 +132,12 @@ export default class WxStore {
       noEmptyObject(obj) && that.setData(obj) // 执行set
     }
     that.__stores = type(that.__stores, OBJECT) ? that.__stores : {} // 初始化实例对象上的状态映射表
-    that.__stores[this._id] = { stateMap, store: this } // 映射对象写入实例对象
+    // 映射对象写入实例对象
+    if (that.__stores[this._id]) {
+      Object.assign(that.__stores[this._id].stateMap, stateMap)
+    } else {
+      that.__stores[this._id] = { stateMap, store: this }
+    }
     !this._binds.find(item => item === that) && this._binds.push(that) // 实例写入this._binds数组中，用于update找到实例对象
   }
 
@@ -198,8 +203,18 @@ export function storePage(options) {
     options.stateMap = options.stateMap || {}
     // store必须为对象、stateMap必须为obj或arr
     if (type(options.store, OBJECT) && (type(options.stateMap, OBJECT) || type(options.stateMap, ARRAY))) {
-      this.$store = new WxStore(options.store) // store 实例话
+      this.$store = options.store instanceof WxStore ? options.store : new WxStore(options.store) // 传入已经是WxStore实例则直接赋值，否者实例化
       this.$store.bind(this, options.stateMap, false) // 绑定是不初始化data、在实例生产前已写入options中
+    }
+    // stores 必须为数组
+    if (type(options.stores, ARRAY)) {
+      options.stores.forEach((item = {}) => {
+        // store必须为WxStore对象、stateMap必须为obj或arr
+        const { store, stateMap } = item
+        if (store instanceof WxStore && (type(stateMap, OBJECT) || type(stateMap, ARRAY))) {
+          store.bind(this, stateMap)
+        }
+      })
     }
     type(onLoad, FUNCTION) && onLoad.apply(this, [].slice.call(arguments))
   }
@@ -229,11 +244,22 @@ export function storeComponent(options) {
   // 重写ready
   const ready = opts.ready
   opts.ready = function () {
-    this.$store = getCurrentPage(this).$store || new WxStore({}) // 找到Page中store， 如果无则生产一个空的store
+    // 传入已经是WxStore实例则直接赋值，否者获取Page的$store
+    this.$store = options.store instanceof WxStore ? options.store : getCurrentPage(this).$store || new WxStore({})
     options.stateMap = options.stateMap || {}
     // stateMap必须为Object或Array
     if (type(options.stateMap, OBJECT) || type(options.stateMap, ARRAY)) {
       this.$store.bind(this, options.stateMap) // 绑定是不初始化data、在实例生产前已写入options中
+    }
+    // stores 必须为数组
+    if (type(options.stores, ARRAY)) {
+      options.stores.forEach((item) => {
+        // store必须为WxStore对象、stateMap必须为obj或arr
+        const { store, stateMap } = item
+        if (store instanceof WxStore && (type(stateMap, OBJECT) || type(stateMap, ARRAY))) {
+          store.bind(this, stateMap)
+        }
+      })
     }
     type(ready, FUNCTION) && ready.apply(this, [].slice.call(arguments))
   }
