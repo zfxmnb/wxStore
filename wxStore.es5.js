@@ -17,7 +17,7 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
  * 注：1、基础库版本2.7.1
  *    2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
  *    3、setState中有数组时，如果出现非push类型的修改时需要主动关闭performance模式否者可能出现数据错误
- *    4、可在store配置中设置默认是否开始performance模式
+ *    4、actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全体换
  */
 var storeId = 1;
 
@@ -125,7 +125,7 @@ var WxStore = /*#__PURE__*/function () {
         // 根据对象key 提取 state 与对于value比对
         for (var keyStr in obj) {
           // 获取diffObj
-          Object.assign(this._diffObj, diff(obj[keyStr], getValue(this._state, keyStr), keyStr), performance); // 写入store state
+          Object.assign(this._diffObj, diff(obj[keyStr], getValue(this._state, keyStr), keyStr, performance)); // 写入store state
 
           setValue(this._state, keyStr, obj[keyStr]);
         } // 更新
@@ -146,7 +146,7 @@ var WxStore = /*#__PURE__*/function () {
       var _this3 = this;
 
       // Promise 异步实现合并set
-      this._pendding = this._pendding || new Promise(function (resolve) {
+      this._pendding = this._pendding || Promise.resolve().then(function () {
         if (noEmptyObject(_this3._diffObj)) {
           // 实例更新
           _this3._binds.forEach(function (that) {
@@ -165,9 +165,7 @@ var WxStore = /*#__PURE__*/function () {
           }
         }
 
-        resolve();
-      }).then(function () {
-        _this3._debug && console.log(_this3._diffObj);
+        _this3._debug && console.log('diff object:', _this3._diffObj);
         _this3._diffObj = {}; // 清空diff结果
 
         delete _this3._pendding; // 清除
@@ -417,7 +415,7 @@ function diff(current, pre) {
     // 对象
     var keys = Object.keys(pre);
     keys.forEach(function (key) {
-      Object.assign(diffObj, diff(current[key], pre[key], "".concat(prefix ? "".concat(prefix, ".").concat(key) : key)), performance);
+      Object.assign(diffObj, diff(current[key], pre[key], "".concat(prefix ? "".concat(prefix, ".").concat(key) : key), performance));
     });
   } else if (prefix && current !== pre) {
     // 非数组非对象
@@ -551,6 +549,11 @@ function getValue(state, relKey) {
 
 function setValue(state, relKey, data) {
   var keys = relKey.match(/(?:(?!\.|\[|\])\S)+/g) || [];
+
+  if (!keys.length) {
+    return;
+  }
+
   var obj = state;
 
   for (var i = 0; i < keys.length; i++) {
@@ -559,6 +562,7 @@ function setValue(state, relKey, data) {
     } else if (obj instanceof Object) {
       obj = obj[keys[i]];
     } else {
+      obj = undefined;
       break;
     }
   }

@@ -13,7 +13,7 @@ wxStore为微信小程序专门定制的轻量、简便、实用的状态管理�
 * 1、基础库版本2.7.1
 * 2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
 * 3、setState中有数组时，如果出现非push类型的修改时需要主动关闭performance模式否者可能出现数据错误
-* 4、actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全体换
+* 4、actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全替换
 ## 使用
 ```js
 import { WxStore, storePage, storeComponent } from "./wxStore";
