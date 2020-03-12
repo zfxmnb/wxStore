@@ -14,10 +14,9 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 /**
  * 微信小程序状态管理
- * 注：1、基础库版本2.7.1
- *    2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
- *    3、setState中有数组时，如果出现非push类型的修改时需要主动关闭performance模式否者可能出现数据错误
- *    4、actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全体换
+ * 1、基础库版本2.7.1以上
+ * 2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
+ * 3、setState中有数组时，如果出现可预期为push行为的数组主动开启performance模式可提高性能尤其是对于体量比越大的数组效果越明显，actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全替换
  */
 var storeId = 1;
 
@@ -27,7 +26,7 @@ var WxStore = /*#__PURE__*/function () {
         state = _ref.state,
         actions = _ref.actions,
         _ref$performance = _ref.performance,
-        performance = _ref$performance === void 0 ? true : _ref$performance,
+        performance = _ref$performance === void 0 ? false : _ref$performance,
         _ref$debug = _ref.debug,
         debug = _ref$debug === void 0 ? false : _ref$debug;
 
@@ -92,12 +91,14 @@ var WxStore = /*#__PURE__*/function () {
       var _this2 = this;
 
       if (type(relKey, ARRAY)) {
+        // 数组
         var obj = {};
         relKey.forEach(function (item) {
           obj[item] = _this2._getState(item);
         });
         return obj;
       } else if (type(relKey, OBJECT)) {
+        // 对象
         var _obj = {};
 
         for (var key in relKey) {
@@ -106,7 +107,11 @@ var WxStore = /*#__PURE__*/function () {
 
         return _obj;
       } else if (type(relKey, STRING)) {
+        // 字符串
         return deepClone(getValue(this._state, relKey));
+      } else if (type(relKey, UNDEFINED)) {
+        // 不穿返回所有state
+        return deepClone(this._state);
       }
     }
     /**
@@ -133,7 +138,7 @@ var WxStore = /*#__PURE__*/function () {
 
         this._update();
       } else {
-        console.warn('check _setState Object');
+        console.warn('[wxStore] check set Object');
       }
     }
     /**
@@ -146,8 +151,8 @@ var WxStore = /*#__PURE__*/function () {
       var _this3 = this;
 
       // Promise 异步实现合并set
-      this._pendding = this._pendding || Promise.resolve().then(function () {
-        if (noEmptyObject(_this3._diffObj)) {
+      if (noEmptyObject(this._diffObj)) {
+        this._pendding = this._pendding || Promise.resolve().then(function () {
           // 实例更新
           _this3._binds.forEach(function (that) {
             // 获取diffObj => 实例的新的diff数据
@@ -163,13 +168,13 @@ var WxStore = /*#__PURE__*/function () {
 
             noEmptyObject(obj) && _this3._listener[id].cb(obj);
           }
-        }
 
-        _this3._debug && console.log('diff object:', _this3._diffObj);
-        _this3._diffObj = {}; // 清空diff结果
+          _this3._debug && console.log('diff object:', _this3._diffObj);
+          _this3._diffObj = {}; // 清空diff结果
 
-        delete _this3._pendding; // 清除
-      });
+          delete _this3._pendding; // 清除
+        });
+      }
     }
     /**
      * 绑定对象
@@ -185,13 +190,13 @@ var WxStore = /*#__PURE__*/function () {
 
       // 必须为实例对象
       if (!type(that, OBJECT)) {
-        console.warn('check bind this');
+        console.warn('[wxStore] check bind this');
         return;
       } // 必须是obj或者arr
 
 
       if (!type(map, OBJECT) && !type(map, ARRAY)) {
-        console.warn('check bind stateMap');
+        console.warn('[wxStore] check bind stateMap');
         map = {};
       } // 获取state=>实例data的指向
 
@@ -250,7 +255,7 @@ var WxStore = /*#__PURE__*/function () {
     value: function addListener(map, cb) {
       // map必须为obj或者arr 且cb必须为function
       if (!(type(map, OBJECT) || type(map, ARRAY)) || !type(cb, FUNCTION)) {
-        console.warn('check addListener params');
+        console.warn('[wxStore] check addListener params');
         return;
       } // 获取state=>实例data的指向
 
@@ -438,14 +443,24 @@ function diff(current, pre) {
   var diffObj = {};
 
   if (type(pre, ARRAY) && type(current, ARRAY)) {
-    if (performance && current.length > pre.length) {
-      // 性能模式下数组push
-      for (var i = pre.length; i < current.length; i++) {
-        diffObj["".concat(prefix, "[").concat(i, "]")] = current[i];
-      }
-    } else {
-      // 其他情况数组
+    if (current.length < pre.length) {
+      // 数据length比原数据小，全替换
       diffObj[prefix] = current;
+    } else {
+      // 数据length比原数据大
+      if (!performance) {
+        // 非性能模式下数组每一项深层diff
+        for (var i = 0; i < pre.length; i++) {
+          Object.assign(diffObj, diff(current[i], pre[i], "".concat(prefix ? "".concat(prefix, "[").concat(i, "]") : "[".concat(i, "]")), performance));
+        }
+      }
+
+      if (current.length > pre.length) {
+        // 性能模式下数组push
+        for (var _i = pre.length; _i < current.length; _i++) {
+          diffObj["".concat(prefix, "[").concat(_i, "]")] = current[_i];
+        }
+      }
     }
   } else if (type(pre, OBJECT) && type(current, OBJECT)) {
     // 对象
@@ -559,6 +574,7 @@ function getValue(state, relKey) {
   var keys = relKey.match(/(?:(?!\.|\[|\])\S)+/g) || [];
 
   if (!keys.length) {
+    console.warn("[wxStore] ".concat(relKey, " is not valid"));
     return;
   }
 
@@ -569,6 +585,7 @@ function getValue(state, relKey) {
       obj = obj[keys[i]];
     } else {
       obj = undefined;
+      console.warn("[wxStore] ".concat(relKey, " is not valid"));
       break;
     }
   }
@@ -614,6 +631,7 @@ var STRING = 'String';
 var OBJECT = 'Object';
 var ARRAY = 'Array';
 var FUNCTION = 'Function';
+var UNDEFINED = 'Undefined';
 
 function type(val, str) {
   var typeStr;

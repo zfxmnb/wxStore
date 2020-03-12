@@ -1,18 +1,18 @@
 # wxStore
 ## 一个微信小程序状态管理工具
-wxStore为微信小程序专门定制的轻量、简便、实用的状态管理工具，还在BATE阶段，投入生产评估风险
+wxStore为微信小程序专门定制的轻量、简便、实用的状态管理工具，BATE阶段
 ### 特点
-* 轻量，全部代码转译压缩包大概7K
+* 轻量，全部代码压缩包大概7K
 * 简便实用，3个全局方法WxStore、storePage、storeComponent，4个WxStore对象方法bind、unBind、addListener、removeListener，2个actions绑定方法get、set
 * 支持数据diff， 提高写入性能，避免大数据情况小程序报数据超限问题
-* 对小程序数组diff提供了优化选项，支持控制数组的局部更新能力
+* 对小程序数组diff提供了优化选项，支持控制数组的局部更新能力提升性能
 * 合并set，同步set只会在视图渲染中执行一次
 * 数据绑定自动更新、数据绑定监听更新能力
 * 支持页面数据状态管理、全局数据状态管理，支持更多业务场景
 ## 注意
-* 1、基础库版本2.7.1
+* 1、基础库版本2.7.1以上
 * 2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
-* 3、setState中有数组时，如果出现非push类型的修改时需要主动关闭performance模式否者可能出现数据错误，actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全替换
+* 3、setState中有数组时，如果出现可预期为push行为的数组主动开启performance模式可提高性能尤其是对于体量比越大的数组效果越明显，actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全替换
 ## 使用
 可通过小程序代码片段查看使用方法
 ```js
@@ -20,7 +20,7 @@ import { WxStore, storePage, storeComponent } from "./wxStore";
 // store 配置
 const store = {
   debug: false, // 控制台是否输出diff结果，默认false
-  performance: true, // 是否开启针对push数组的性能优化, 默认true
+  performance: false, // 是否关闭针对数组push行为的性能优化
   state: {
     a: {
       b: 1
@@ -30,8 +30,15 @@ const store = {
   // 行为方法
   actions: {
     A() {
-      // 不能直接获取state，只能通过this.get('a.b')获取
-      // 不能直接设置state，只能通过this.set({ 'a.b': 2 })设置
+      // get
+      // this.get(['a']) => { a:  { b: 1 }}
+      // this.get({ A: 'a' }) => { A:  { b: 1 }}
+      // this.get('a') => { b: 1 }
+      // this.get() => { a: { b: 1 }}
+
+      // set
+      // this.set({ 'a.b': 2 })
+      // this.set({ a: { b: 2 }})
     }
   }
 }

@@ -1,13 +1,12 @@
 /**
  * 微信小程序状态管理
- * 注：1、基础库版本2.7.1
- *    2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
- *    3、setState中有数组时，如果出现非push类型的修改时需要主动关闭performance模式否者可能出现数据错误
- *    4、actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全体换
+ * 1、基础库版本2.7.1以上
+ * 2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
+ * 3、setState中有数组时，如果出现可预期为push行为的数组主动开启performance模式可提高性能尤其是对于体量比越大的数组效果越明显，actions 方法中 arr === [1, 2] this.set({ arr: [], arr[1, 3, 4]})可实现performance:true下的数组全替换
  */
 let storeId = 1
 export default class WxStore {
-  constructor({ state, actions, performance = true, debug = false } = {}) {
+  constructor({ state, actions, performance = false, debug = false } = {}) {
     this._id = storeId++ // store id
     this._state = (state && deepClone(state)) || {} // state
     this._binds = [] // 绑定的实例对象
@@ -42,19 +41,25 @@ export default class WxStore {
    */
   _getState(relKey) {
     if (type(relKey, ARRAY)) {
+      // 数组
       const obj = {}
       relKey.forEach((item) => {
         obj[item] = this._getState(item)
       })
       return obj
     } else if (type(relKey, OBJECT)) {
+      // 对象
       const obj = {}
       for (const key in relKey) {
         obj[key] = this._getState(relKey[key])
       }
       return obj
     } else if (type(relKey, STRING)) {
+      // 字符串
       return deepClone(getValue(this._state, relKey))
+    } else if (type(relKey, UNDEFINED)) {
+      // 不穿返回所有state
+      return deepClone(this._state)
     }
   }
   
@@ -76,7 +81,7 @@ export default class WxStore {
       // 更新
       this._update()
     } else {
-      console.warn('check _setState Object')
+      console.warn('[wxStore] check set Object')
     }
   }
 
@@ -85,27 +90,27 @@ export default class WxStore {
    */
   _update() {
     // Promise 异步实现合并set
-    this._pendding = this._pendding || Promise.resolve().then(() => {
-        if (noEmptyObject(this._diffObj)) {
-          // 实例更新
-          this._binds.forEach((that) => {
-            // 获取diffObj => 实例的新的diff数据
-            const obj = getMapData(that.__stores[this._id].stateMap, this._diffObj)
-            // set实例对象中
-            noEmptyObject(obj) && that.setData(obj)
-          })
-          // 监听器回调
-          for (const id in this._listener) {
-            // 获取diffObj => 实例的新的diff数据
-            const obj = getMapData(this._listener[id].stateMap, this._diffObj)
-            // 执行回调
-            noEmptyObject(obj) && this._listener[id].cb(obj)
-          }
+    if (noEmptyObject(this._diffObj)) {
+      this._pendding = this._pendding || Promise.resolve().then(() => {
+        // 实例更新
+        this._binds.forEach((that) => {
+          // 获取diffObj => 实例的新的diff数据
+          const obj = getMapData(that.__stores[this._id].stateMap, this._diffObj)
+          // set实例对象中
+          noEmptyObject(obj) && that.setData(obj)
+        })
+        // 监听器回调
+        for (const id in this._listener) {
+          // 获取diffObj => 实例的新的diff数据
+          const obj = getMapData(this._listener[id].stateMap, this._diffObj)
+          // 执行回调
+          noEmptyObject(obj) && this._listener[id].cb(obj)
         }
         this._debug && console.log('diff object:', this._diffObj)
         this._diffObj = {} // 清空diff结果
         delete this._pendding // 清除
       })
+    }
   }
 
   /**
@@ -117,12 +122,12 @@ export default class WxStore {
   bind(that, map, needSetData = true) {
     // 必须为实例对象
     if (!type(that, OBJECT)) {
-      console.warn('check bind this')
+      console.warn('[wxStore] check bind this')
       return
     }
     // 必须是obj或者arr
     if (!type(map, OBJECT) && !type(map, ARRAY)) {
-      console.warn('check bind stateMap')
+      console.warn('[wxStore] check bind stateMap')
       map = {}
     }
     // 获取state=>实例data的指向
@@ -164,7 +169,7 @@ export default class WxStore {
   addListener(map, cb) {
     // map必须为obj或者arr 且cb必须为function
     if (!(type(map, OBJECT) || type(map, ARRAY)) || !type(cb, FUNCTION)) {
-      console.warn('check addListener params')
+      console.warn('[wxStore] check addListener params')
       return
     }
     // 获取state=>实例data的指向
@@ -303,16 +308,24 @@ function setOptions(options) {
 export function diff(current, pre, prefix = '', performance) {
   const diffObj = {}
   if (type(pre, ARRAY) && type(current, ARRAY)) {
-    if (performance && current.length > pre.length) {
-      // 性能模式下数组push
-      for (let i = pre.length; i < current.length; i++) {
-        diffObj[`${prefix}[${i}]`] = current[i]
-      }
-    } else {
-      // 其他情况数组
+    if (current.length < pre.length) {
+      // 数据length比原数据小，全替换
       diffObj[prefix] = current
+    } else {
+      // 数据length比原数据大
+      if (!performance) {
+        // 非性能模式下数组每一项深层diff
+        for (let i = 0; i < pre.length; i++) {
+          Object.assign(diffObj, diff(current[i], pre[i], `${prefix ? `${prefix}[${i}]` : `[${i}]`}`, performance))
+        }
+      }
+      if (current.length > pre.length) {
+        // 性能模式下数组push
+        for (let i = pre.length; i < current.length; i++) {
+          diffObj[`${prefix}[${i}]`] = current[i]
+        }
+      }
     }
-    
   } else if (type(pre, OBJECT) && type(current, OBJECT)) {
     // 对象
     const keys = Object.keys(pre)
@@ -404,6 +417,7 @@ function reverseMap(map) {
 function getValue(state, relKey) {
   const keys = relKey.match(/(?:(?!\.|\[|\])\S)+/g) || []
   if (!keys.length) {
+    console.warn(`[wxStore] ${ relKey } is not valid`)
     return
   }
   let obj = state
@@ -412,6 +426,7 @@ function getValue(state, relKey) {
       obj = obj[keys[i]]
     } else {
       obj = undefined
+      console.warn(`[wxStore] ${ relKey } is not valid`)
       break
     }
   }
@@ -450,6 +465,7 @@ const STRING = 'String'
 const OBJECT = 'Object'
 const ARRAY = 'Array'
 const FUNCTION = 'Function'
+const UNDEFINED = 'Undefined'
 function type(val, str) {
   let typeStr
   if (typeof val === 'string') {

@@ -11,7 +11,7 @@ const defaultState = {
 }
 export default new WxStore({
   // debug: true, // 控制台是否输出diff结果
-  // performance: false, // 是否开启针对push数组的性能优化
+  // performance: true, // 是否关闭针对数组push行为的性能优化
   state: localData || defaultState,
   actions: {
     // 更新分数
