@@ -1,4 +1,4 @@
-import WxStore from './wxStore.js'
+import WxStore from './wxStore'
 const localData = wx.getStorageSync('data')
 const defaultState = {
   scores: {
@@ -10,40 +10,26 @@ const defaultState = {
   gameCount: 0
 }
 export default new WxStore({
-  // debug: true, // 控制台是否输出diff结果
-  // performance: true, // 是否关闭针对数组push行为的性能优化
+  debug: true, // 控制台是否输出diff结果
   state: localData || defaultState,
   actions: {
     // 更新分数
     addScore(score) {
-      // 获取单个数据
-      const records = this.get('scores.records')
-      // 对象形式获取
-      let { maxScore, total } = this.get({
-        maxScore: 'scores.maxScore',
-        total: 'scores.total'
-      })
+      const { scores } = this.state
+      const { records, maxScore } = scores
       // 数组形式获取
-      let { gameCount } = this.get(['gameCount'])
-      gameCount++
-      maxScore = score > maxScore ? score : maxScore
-      total += score
-      const average = parseFloat(total / gameCount).toFixed(2)
+      scores.maxScore = score > maxScore ? score : maxScore
+      this.state.gameCount++
+      scores.total += score
+      scores.average = parseFloat(scores.total / this.state.gameCount).toFixed(2)
       records.push(score)
-      const data = {
-        gameCount,
-        scores: {
-          maxScore,
-          total,
-          average,
-          records
-        }
-      }
-      this.set(data)
-      wx.setStorageSync('data', data)
+      this.update()
+      wx.setStorageSync('data', this.state)
     },
     clear () {
-      this.set(defaultState)
+      this.update({
+        ...defaultState
+      })
       wx.setStorageSync('data', defaultState)
     }
   }

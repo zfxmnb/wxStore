@@ -4,7 +4,7 @@
   <view class="num">总得分：{{total}}</view>
   <view class="num">总次数：{{gameCount}}</view>
   <view class="scroll">
-    <view class="num" wx:for="{{records}}" wx:key="index">第{{index+1}}次：{{item}}分</view>
+    <view class="num" wx:for="{{records}}" wx:key="index">第{{index - (-1)}}次：{{item}}分</view>
   </view>
   <view class="btn" bindtap="goto">开始</view>
   <view class="btn" bindtap="clear">清除</view>

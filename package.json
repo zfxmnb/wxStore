@@ -2,7 +2,7 @@
     "name": "@fanx/wxstore",
     "version": "1.0.0-beta8",
     "description": "wechat miniprogram store manager",
-    "main": "wxStore.es5.js",
+    "main": "dist/wxStore.js",
     "repository": {
       "type": "git",
       "url": "git+https://github.com/zfxmnb/wxStore.git"
@@ -14,7 +14,7 @@
       "wx"
     ],
     "scripts": {
-      "build": "babel wxStore.js -o wxStore.es5.js"
+      "build": "babel wxStore.js -o dist/wxStore.js && babel utils -d dist/utils"
     },
     "devDependencies": {
       "@babel/cli": "^7.8.3",

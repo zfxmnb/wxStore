@@ -14,14 +14,12 @@ storeComponent({
       maxScore: 'scores.maxScore',
       average: 'scores.average'
     })
-    this._listener = this.$store.addListener({ score: 'count' }, (obj) => {
+    this.store.on({ score: 'count' }, (obj) => {
       this.setData(obj)
-    })
+    }, this)
   },
 
-  detached () {
-    this.$store.removeListener(this._listener)
-  },
+  detached () {},
 
   /**
    * 组件的方法列表

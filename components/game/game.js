@@ -44,7 +44,7 @@ storeComponent({
         })
       }
       if (this.statue === 1) {
-        this.$store.actions.click()
+        this.store.actions.click()
       }
     },
     reset () {
@@ -54,7 +54,7 @@ storeComponent({
           countTime: 10,
           statue: this.statue = 0
         })
-        this.$store.actions.reset()
+        this.store.actions.reset()
       }
     },
     gameOver () {

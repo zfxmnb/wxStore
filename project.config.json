@@ -6,8 +6,9 @@
 	"setting": {
 		"urlCheck": false,
 		"es6": true,
-		"enhance": true,
+		"enhance": false,
 		"postcss": true,
+		"preloadBackgroundData": false,
 		"minified": true,
 		"newFeature": true,
 		"coverView": true,
@@ -60,6 +61,13 @@
 					"id": -1,
 					"name": "index/index",
 					"pathName": "index/index",
+					"query": "",
+					"scene": null
+				},
+				{
+					"id": -1,
+					"name": "game/game",
+					"pathName": "game/game",
 					"scene": null
 				}
 			]

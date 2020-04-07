@@ -1,19 +1,17 @@
 export default {
+  // debug: true,
   state: {
     count: 0
   },
   actions: {
     // 点击
     click() {
-      let count = this.get('count')
-      count++
-      this.set({
-        count
-      })
+      this.state.count++
+      this.update()
     },
 
     reset () {
-      this.set({
+      this.update({
         count: 0
       })
     }

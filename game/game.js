@@ -1,5 +1,5 @@
 import { storePage } from '../wxStore'
-import globel from '../store.js'
+import globel from '../store'
 import store from './gameStore'
 storePage({
   store,

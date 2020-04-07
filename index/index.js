@@ -1,5 +1,5 @@
 import { storePage } from '../wxStore'
-import globel from '../store.js'
+import globel from '../store'
 storePage({
   stores: [{
     store: globel,
@@ -15,13 +15,13 @@ storePage({
   onLoad () {
     globel.bind(this, {
       total: 'scores.total',
-      gameCount: 'gameCount',
+      gameCount: 'gameCount'
     })
   },
 
   goto () {
     wx.navigateTo({
-      url: '/game/game',
+      url: '/game/game'
     })
   },
   
