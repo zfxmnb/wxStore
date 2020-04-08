@@ -44,7 +44,7 @@ var WxStore = /*#__PURE__*/function () {
 
     this._state = (0, _utils.deepClone)(state);
 
-    if (supportProxy) {
+    if (supportProxy && (0, _utils.noEmptyObject)(state)) {
       (0, _utils.defineStatic)(this, 'state', (0, _observer2["default"])((0, _utils.deepClone)(state), this._observer.bind(this))); // 监听对象变化
     } else {
       this.state = (0, _utils.deepClone)(state); // state
@@ -77,7 +77,8 @@ var WxStore = /*#__PURE__*/function () {
     key: "_observer",
     value: function _observer(keys, value) {
       if (keys.length) {
-        // 根据对象key 提取 state 与对于value比对
+        value = (0, _utils.deepClone)(value); // 根据对象key 提取 state 与对于value比对
+
         var keyStr = (0, _utils.toKeyStr)(keys, this._state); // 空对象不执行diff update操作
 
         if ((0, _utils.noEmptyObject)(value)) {
@@ -88,7 +89,7 @@ var WxStore = /*#__PURE__*/function () {
         } // 写入store state
 
 
-        (0, _utils.setValue)(this._state, keys, (0, _utils.deepClone)(value));
+        (0, _utils.setValue)(this._state, keys, value);
       }
     }
     /**
@@ -100,11 +101,11 @@ var WxStore = /*#__PURE__*/function () {
     key: "_diffSet",
     value: function _diffSet() {
       // 获取diffObj
-      Object.assign(this._diffObj, (0, _diff["default"])(this.state, this._state)); // 写入store state
+      Object.assign(this._diffObj, (0, _utils.deepClone)((0, _diff["default"])(this.state, this._state))); // 写入store state
 
       for (var key in this._diffObj) {
         var keys = (0, _utils.toKeys)(key);
-        (0, _utils.setValue)(this._state, keys, (0, _utils.deepClone)(this._diffObj[key]));
+        (0, _utils.setValue)(this._state, keys, this._diffObj[key]);
       }
     }
     /**
@@ -115,7 +116,8 @@ var WxStore = /*#__PURE__*/function () {
 
   }, {
     key: "update",
-    value: function update(obj, immediately) {
+    value: function update(obj, imm) {
+      // 不支持proxy的兼容
       if ((0, _utils.type)(obj, _utils.OBJECT)) {
         for (var key in obj) {
           var keys = (0, _utils.toKeys)(key);
@@ -123,10 +125,10 @@ var WxStore = /*#__PURE__*/function () {
         }
       }
 
-      if (immediately) {
-        this._set();
+      if (imm) {
+        return this._set();
       } else {
-        this._merge();
+        return this._merge();
       }
     }
     /**
@@ -140,9 +142,11 @@ var WxStore = /*#__PURE__*/function () {
 
       // Promise 异步实现合并set
       if ((0, _utils.noEmptyObject)(this._diffObj)) {
-        this._pendding = this._pendding || Promise.resolve().then(function () {
-          _this2._set();
+        return this._pendding = this._pendding || Promise.resolve().then(function () {
+          return _this2._set();
         });
+      } else {
+        return Promise.resolve({});
       }
     }
     /**
@@ -154,46 +158,60 @@ var WxStore = /*#__PURE__*/function () {
     value: function _set() {
       var _this3 = this;
 
-      if (!supportProxy) {
-        // 用于不支持Proxy对象
-        this._diffSet();
-      }
-
-      if ((0, _utils.noEmptyObject)(this._diffObj)) {
-        // 实例更新
-        this._binds.forEach(function (that) {
-          // 获取diffObj => 实例的新的diff数据
-          var obj = getMapData(that.__stores[_this3._id].stateMap, _this3._diffObj); // set实例对象中
-
-          (0, _utils.noEmptyObject)(obj) && that.setData(obj);
-        }); // 监听器回调
-
-
-        for (var id in this._listener) {
-          // 获取diffObj => 实例的新的diff数据
-          var obj = getMapData(this._listener[id].stateMap, this._diffObj); // 执行回调
-
-          (0, _utils.noEmptyObject)(obj) && this._listener[id].fn(obj);
+      return new Promise(function (resolve) {
+        if (!supportProxy) {
+          // 用于不支持Proxy对象
+          _this3._diffSet();
         }
 
-        this._debug && console.log('diff object:', this._diffObj);
-        this._diffObj = {}; // 清空diff结果
-      }
+        if ((0, _utils.noEmptyObject)(_this3._diffObj)) {
+          // 监听器回调
+          for (var id in _this3._listener) {
+            // 获取diffObj => 实例的新的diff数据
+            var obj = _this3._getMapData(_this3._listener[id].stateMap, _this3._diffObj); // 执行回调
 
-      delete this._pendding; // 清除
+
+            (0, _utils.noEmptyObject)(obj) && _this3._listener[id].fn(obj);
+          } // 实例更新
+
+
+          var count = 0;
+
+          _this3._binds.forEach(function (that) {
+            // 获取diffObj => 实例的新的diff数据
+            var obj = _this3._getMapData(that.__stores[_this3._id].stateMap, _this3._diffObj); // set实例对象中
+
+
+            if ((0, _utils.noEmptyObject)(obj)) {
+              count++;
+              that.setData(obj, function () {
+                count--;
+
+                if (count <= 0) {
+                  resolve(obj);
+                }
+              });
+            }
+          });
+
+          _this3._debug && console.log('diff object:', _this3._diffObj);
+          _this3._diffObj = {}; // 清空diff结果
+        } else {
+          resolve({});
+        }
+
+        delete _this3._pendding; // 清除
+      });
     }
     /**
      * 绑定对象
      * @param {*} that 实例Page/Component
      * @param {*} map state => 实例data 的映射map
-     * @param {*} needSetData 是否需要在绑定时初始化数据到实例
      */
 
   }, {
     key: "bind",
     value: function bind(that, map) {
-      var needSetData = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
-
       // 必须为实例对象
       if (!(0, _utils.type)(that, _utils.OBJECT)) {
         console.warn('[wxStore] check bind this');
@@ -208,12 +226,9 @@ var WxStore = /*#__PURE__*/function () {
 
 
       var stateMap = (0, _utils.reverse)(map);
+      var obj = initData(stateMap, this._state); // 初始化实例的data
 
-      if (needSetData) {
-        var obj = getMapData(stateMap, null, this._state); // 初始化实例的data
-
-        (0, _utils.noEmptyObject)(obj) && that.setData(obj); // 执行set
-      }
+      (0, _utils.noEmptyObject)(obj) && that.setData(obj); // 执行set
 
       that.__stores = (0, _utils.type)(that.__stores, _utils.OBJECT) ? that.__stores : {}; // 初始化实例对象上的状态映射表
       // 映射对象写入实例对象
@@ -299,6 +314,37 @@ var WxStore = /*#__PURE__*/function () {
         delete this._listener[id];
       }
     }
+    /**
+     * 根据具体diff 及 映射map 获得最终setData对象
+     * @param {*} map 映射map
+     * @param {*} diffObj diff对象
+     */
+
+  }, {
+    key: "_getMapData",
+    value: function _getMapData(map, diffObj) {
+      if (!(0, _utils.noEmptyObject)(map)) return {};
+      var obj = {}; // 传入diffObj执行映射转换、传null直接初始化
+
+      if (diffObj) {
+        // diff结果与映射的双重比对
+        var reg = RegExp("^(".concat(Object.keys(map).join('|'), ")((?=(?:\\.|\\[))|$)"));
+
+        for (var key in diffObj) {
+          var match = false;
+          var newKey = key.replace(reg, function (s) {
+            match = true;
+            return map[s] || s;
+          });
+
+          if (match) {
+            obj[newKey] = diffObj[key];
+          }
+        }
+      }
+
+      return obj;
+    }
   }]);
 
   return WxStore;
@@ -315,12 +361,13 @@ exports["default"] = WxStore;
 function attached(ops, isComponent) {
   var _this4 = this;
 
-  ops.stateMap = ops.stateMap || {}; // store必须为对象、stateMap必须为obj或arr
+  ops.stateMap = ops.stateMap || {};
+  ops.store = ops.store || {}; // store必须为对象、stateMap必须为obj或arr
 
   if ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY)) {
-    this.store = ops.store instanceof WxStore ? ops.store : isComponent ? (0, _instanceUtils.getCurrentPage)(this).store : new WxStore(ops.store || {}); // 传入已经是WxStore实例则直接赋值，否者实例化
+    this.store = ops.store instanceof WxStore ? ops.store : isComponent ? (0, _instanceUtils.getCurrentPage)(this).store : new WxStore(ops.store); // 传入已经是WxStore实例则直接赋值，否者实例化
 
-    this.store.bind(this, ops.stateMap, isComponent); // 绑定是不初始化data、在实例生产前已写入options中
+    this.store.bind(this, ops.stateMap); // 绑定是不初始化data、在实例生产前已写入options中
   } // stores 必须为数组
 
 
@@ -392,10 +439,15 @@ function storePage(ops) {
   Page(ops);
 }
 /**
+ * diff
+ */
+
+
+exports.diff = _diff["default"];
+/**
  * 重写Component方法，提供自动绑定store自定移除store方法
  * @param {*} ops 组件初始化配置
  */
-
 
 function storeComponent(ops) {
   setOptions(ops); // 初始化data、作用是给data里面填入store中的默认state
@@ -429,7 +481,8 @@ function storeComponent(ops) {
 
 function setOptions(ops) {
   if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {
-    var obj = getMapData((0, _utils.reverse)(ops.stateMap), null, ops.store.state); // 初始化实例的data
+    var reverseMap = (0, _utils.reverse)(ops.stateMap);
+    var obj = initData(reverseMap, ops.store.state); // 初始化实例的data
 
     ops.data = (0, _utils.type)(ops.data, _utils.OBJECT) ? ops.data : {};
     Object.assign(ops.data, obj);
@@ -438,37 +491,20 @@ function setOptions(ops) {
   return ops;
 }
 /**
- * 根据具体diff 及 映射map 获得最终setData对象
- * @param {*} map 映射map
- * @param {*} diffObj diff对象
- * @param {*} data 元数据，初始化时使用
+ * 初始化数据
+ * @param {*} map 
+ * @param {*} data 
  */
 
 
-function getMapData(map, diffObj, data) {
-  if (!(0, _utils.noEmptyObject)(map)) return {};
-  var obj = {}; // 传入diffObj执行映射转换、传null直接初始化
+function initData(map, data) {
+  var obj = {}; // 初始化实例的data
 
-  if (diffObj) {
-    // diff结果与映射的双重比对
-    var reg = RegExp("^(".concat(Object.keys(map).join('|'), ")((?=(?:\\.|\\[))|$)"));
-
-    for (var key in diffObj) {
-      var match = false;
-      var newKey = key.replace(reg, function (s) {
-        match = true;
-        return map[s] || s;
-      });
-
-      if (match) {
-        obj[newKey] = diffObj[key];
-      }
-    }
-  } else if ((0, _utils.type)(data, _utils.OBJECT)) {
+  if ((0, _utils.noEmptyObject)(map) && (0, _utils.type)(data, _utils.OBJECT)) {
     // 在初始化实例data使用
-    for (var _key in map) {
-      var keys = (0, _utils.toKeys)(_key);
-      obj[map[_key]] = (0, _utils.deepClone)((0, _utils.getValue)(data, keys));
+    for (var key in map) {
+      var keys = (0, _utils.toKeys)(key);
+      obj[map[key]] = (0, _utils.deepClone)((0, _utils.getValue)(data, keys));
     }
   }
 

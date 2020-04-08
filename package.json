@@ -1,30 +1,33 @@
 {
-    "name": "@fanx/wxstore",
-    "version": "1.0.0-beta8",
-    "description": "wechat miniprogram store manager",
-    "main": "dist/wxStore.js",
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/zfxmnb/wxStore.git"
-    },
-    "keywords": [
-      "wechat",
-      "miniprogram",
-      "store",
-      "wx"
-    ],
-    "scripts": {
-      "build": "babel wxStore.js -o dist/wxStore.js && babel utils -d dist/utils"
-    },
-    "devDependencies": {
-      "@babel/cli": "^7.8.3",
-      "@babel/core": "^7.7.5",
-      "@babel/plugin-proposal-class-properties": "^7.7.4",
-      "@babel/plugin-transform-modules-commonjs": "^7.7.5",
-      "@babel/plugin-transform-runtime": "^7.7.6",
-      "@babel/preset-env": "^7.7.6",
-      "@babel/runtime": "^7.7.7"
-    },
-    "author": "zengfanxing",
-    "license": "MIT"
-  }
+  "name": "@fanx/wxstore",
+  "version": "1.0.0-beta9",
+  "description": "wechat miniprogram store manager",
+  "main": "dist/wxStore.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zfxmnb/wxStore.git"
+  },
+  "keywords": [
+    "wechat",
+    "miniprogram",
+    "store",
+    "wx"
+  ],
+  "scripts": {
+    "build": "babel wxStore.js -o dist/wxStore.js && babel utils -d dist/utils",
+    "test": "babel-node ./node_modules/.bin/mocha test/main.js"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.3",
+    "@babel/core": "^7.7.5",
+    "@babel/node": "^7.8.7",
+    "@babel/plugin-proposal-class-properties": "^7.7.4",
+    "@babel/plugin-transform-modules-commonjs": "^7.7.5",
+    "@babel/plugin-transform-runtime": "^7.7.6",
+    "@babel/preset-env": "^7.7.6",
+    "@babel/runtime": "^7.7.7",
+    "mocha": "^7.1.1"
+  },
+  "author": "zengfanxing",
+  "license": "MIT"
+}

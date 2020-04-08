@@ -8,9 +8,9 @@ function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "functi
 function deepProxy(object, handler) {
   var keys = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
 
-  if (_typeof(object) === 'object') {
+  if (object instanceof Object) {
     for (var key in object) {
-      if (_typeof(object[key]) === 'object') {
+      if (object[key] instanceof Object) {
         object[key] = deepProxy(object[key], handler, [].concat(keys, [key]));
       }
     }

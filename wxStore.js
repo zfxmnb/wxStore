@@ -35,10 +35,11 @@ export default class WxStore {
    */
   _observer (keys, value) {
     if (keys.length) {
+      value = deepClone(value)
       // 根据对象key 提取 state 与对于value比对
       const keyStr = toKeyStr(keys, this._state)
       // 空对象不执行diff update操作
-      if (noEmptyObject(value)) {
+      if (noEmptyObject(value) || (type(value, ARRAY) && value.length)) {
         // 获取diffObj
         Object.assign(this._diffObj, diff(value, getValue(this._state, keys), keyStr))
       } else {
@@ -47,7 +48,7 @@ export default class WxStore {
         })
       }
       // 写入store state
-      setValue(this._state, keys, deepClone(value))
+      setValue(this._state, keys, value)
     }
   }
   
@@ -57,11 +58,11 @@ export default class WxStore {
    */
   _diffSet() {
     // 获取diffObj
-    Object.assign(this._diffObj, diff(this.state, this._state))
+    Object.assign(this._diffObj, deepClone(diff(this.state, this._state)))
     // 写入store state
     for (const key in this._diffObj) {
       const keys = toKeys(key)
-      setValue(this._state, keys, deepClone(this._diffObj[key]))
+      setValue(this._state, keys, this._diffObj[key])
     }
   }
 
@@ -70,17 +71,18 @@ export default class WxStore {
    * @param {*} obj 更新对象
    * @param {*} imm 是否立即更新视图
    */
-  update(obj, immediately) {
+  update(obj, imm) {
+    // 不支持proxy的兼容
     if (type(obj, OBJECT)) {
       for (const key in obj) {
         const keys = toKeys(key)
         setValue(this.state, keys, obj[key])
       }
     }
-    if (immediately) {
-      this._set()
+    if (imm) {
+      return this._set()
     } else {
-      this._merge()
+      return this._merge()
     }
   }
 
@@ -88,15 +90,13 @@ export default class WxStore {
    * 合并多次set
    */
   _merge () {
-    if (!supportProxy) {
-      // 用于不支持Proxy对象
-      this._diffSet()
-    }
     // Promise 异步实现合并set
     if (noEmptyObject(this._diffObj)) {
-      this._pendding = this._pendding || Promise.resolve().then(() => {
-        this._set()
+      return this._pendding = this._pendding || Promise.resolve().then(() => {
+        return this._set()
       })
+    } else {
+      return Promise.resolve({})
     }
   }
 
@@ -104,25 +104,43 @@ export default class WxStore {
    * 设置映射数据
    */
   _set() {
-    if (noEmptyObject(this._diffObj)) {
-      // 实例更新
-      this._binds.forEach((that) => {
-        // 获取diffObj => 实例的新的diff数据
-        const obj = this._getMapData(that.__stores[this._id].stateMap, this._diffObj)
-        // set实例对象中
-        noEmptyObject(obj) && that.setData(obj)
-      })
-      // 监听器回调
-      for (const id in this._listener) {
-        // 获取diffObj => 实例的新的diff数据
-        const obj = this._getMapData(this._listener[id].stateMap, this._diffObj)
-        // 执行回调
-        noEmptyObject(obj) && this._listener[id].fn(obj)
+    return new Promise((resolve) => {
+      if (!supportProxy) {
+        // 用于不支持Proxy对象
+        this._diffSet()
       }
-      this._debug && console.log('diff object:', this._diffObj)
-      this._diffObj = {} // 清空diff结果
-    }
-    delete this._pendding // 清除
+      if (noEmptyObject(this._diffObj)) {
+        // 监听器回调
+        for (const id in this._listener) {
+          // 获取diffObj => 实例的新的diff数据
+          const obj = this._getMapData(this._listener[id].stateMap, this._diffObj)
+          // 执行回调
+          noEmptyObject(obj) && this._listener[id].fn(obj)
+        }
+        // 实例更新
+        let count = 0
+        let diffObj = { ...this._diffObj }
+        this._binds.forEach((that) => {
+          // 获取diffObj => 实例的新的diff数据
+          const obj = this._getMapData(that.__stores[this._id].stateMap, this._diffObj)
+          // set实例对象中
+          if (noEmptyObject(obj)) {
+            count++
+            that.setData(obj, () => {
+              count--
+              if (count <= 0) {
+                resolve(diffObj)
+              }
+            })
+          }
+        })
+        this._debug && console.log('diff object:', this._diffObj)
+        this._diffObj = {} // 清空diff结果
+      } else {
+        resolve({})
+      }
+      delete this._pendding // 清除
+    })
   }
 
   /**
@@ -304,6 +322,11 @@ export function storePage(ops) {
   }
   Page(ops)
 }
+
+/**
+ * diff
+ */
+exports.diff = diff
 
 /**
  * 重写Component方法，提供自动绑定store自定移除store方法

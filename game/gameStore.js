@@ -7,7 +7,9 @@ export default {
     // 点击
     click() {
       this.state.count++
-      this.update()
+      this.update().then((diff) => {
+        // console.log(diff)
+      })
     },
 
     reset () {

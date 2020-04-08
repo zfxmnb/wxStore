@@ -1,8 +1,13 @@
-
+/**
+ * proxy 对象动态监听
+ * @param {*} object
+ * @param {*} handler
+ * @param {*} keys
+ */
 export default function deepProxy(object, handler, keys = []) {
 	if (object instanceof Object) {
 		for (const key in object) {
-			if (object instanceof Object) {
+			if (object[key] instanceof Object) {
 				object[key] = deepProxy(object[key], handler, [].concat(keys, [key]))
 			}
 		}
