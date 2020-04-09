@@ -3,8 +3,12 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports["default"] = deepProxy;
 
-function _typeof(obj) { "@babel/helpers - typeof"; if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
-
+/**
+ * proxy 对象动态监听
+ * @param {*} object
+ * @param {*} handler
+ * @param {*} keys
+ */
 function deepProxy(object, handler) {
   var keys = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
 
@@ -29,7 +33,7 @@ function deepProxy(object, handler) {
           handler(keyList, value);
         }
 
-        if (_typeof(value) === 'object') {
+        if (value instanceof Object) {
           obj[key] = deepProxy(value, handler, keyList);
           return true;
         }

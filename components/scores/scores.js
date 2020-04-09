@@ -14,8 +14,13 @@ storeComponent({
       maxScore: 'scores.maxScore',
       average: 'scores.average'
     })
-    this.store.on({ score: 'count' }, (obj) => {
-      this.setData(obj)
+    this.store.on(['count'], ([ score ]) => {
+      this.setData({
+        score
+      })
+    }, this)
+    globel.on('scores.maxScore, scores.average', ([ maxScore, average ]) => {
+      console.log(maxScore, average)
     }, this)
   },
 

@@ -18,12 +18,12 @@ export default function deepProxy(object, handler, keys = []) {
 			set: (obj, key, value) => {
 				const keyList = [].concat(keys, [key])
 				if (obj[key] === value) return true
-				if (object instanceof Array && key === 'length') {
-					handler([].concat(keys), object.slice(0, value))
+				if (obj instanceof Array && key === 'length') {
+					handler([].concat(keys), obj.slice(0, value))
 				} else {
 					handler(keyList, value)
 				}
-				if (typeof value === 'object') {
+				if (value instanceof Object) {
 					obj[key] = deepProxy(value, handler, keyList)
 					return true
 				}

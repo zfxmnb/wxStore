@@ -31,7 +31,7 @@
 * 旧项目改造成本低
 * 支持 x.y[1].z 小程序原生setData写法
 * 可绑定多个全局store，适用更多业务场景
-* 支持通过actions更改state，集中管理更改state行为
+* 建议通过actions更改state，集中管理更改state行为
 * stateMap映射，随意更改映射数据的字段名， 且避免无用数据写入data，页面组件中也无需设置data默认
 * 自动合并同步set操作，避免视图更新频繁问题，也支持立即更新视图操作
 * 支持订阅模式，适用于无需更新视图的使用场景
@@ -161,8 +161,13 @@ storeComponent({
       maxScore: 'scores.maxScore',
       average: 'scores.average'
     })
-    this.store.on({ score: 'count' }, (obj) => {
-      this.setData(obj)
+    this.store.on(['count'], ([ score ]) => {
+      this.setData({
+        score
+      })
+    }, this)
+    globel.on('scores.maxScore, scores.average', ([ maxScore, average ]) => {
+      console.log(maxScore,  average)
     }, this)
   }
 })

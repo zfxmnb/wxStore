@@ -21,6 +21,7 @@ export default class WxStore {
     this._id = storeId++ // store id
     this._binds = [] // 绑定的实例对象
     this._diffObj = {} // diff结果
+    this._observerList = [] // Proxy监听state
     this._listenerId = 1 // 监听器id
     this._listener = {} // 监听state改变事件
     this._debug = debug // 开启debug模式后会输出没吃diff数据
@@ -34,7 +35,35 @@ export default class WxStore {
    * 监听
    */
   _observer (keys, value) {
-    if (keys.length) {
+    let i = 0
+    const len = keys.length
+    while (i < this._observerList.length) {
+      const item = this._observerList[i]
+      if (item.keys.length >= len) {
+        let match = true
+        for (let j = 0; j < len; j++) {
+          if (keys[j] !== item.keys[j]) {
+            match = false
+            break
+          }
+        }
+        if (match) {
+          this._observerList.splice(i, 1)
+        } else {
+          i++
+        }
+      } else {
+        i++
+      }
+    }
+    this._observerList.push({keys, value})
+  }
+
+  /**
+   * 设置监听state到_state
+   */
+  _observerSet () {
+    this._observerList.forEach(({ keys, value }) => {
       value = deepClone(value)
       // 根据对象key 提取 state 与对于value比对
       const keyStr = toKeyStr(keys, this._state)
@@ -49,7 +78,8 @@ export default class WxStore {
       }
       // 写入store state
       setValue(this._state, keys, value)
-    }
+    })
+    this._observerList = []
   }
   
   /**
@@ -91,13 +121,9 @@ export default class WxStore {
    */
   _merge () {
     // Promise 异步实现合并set
-    if (noEmptyObject(this._diffObj)) {
-      return this._pendding = this._pendding || Promise.resolve().then(() => {
-        return this._set()
-      })
-    } else {
-      return Promise.resolve({})
-    }
+    return this._pendding = this._pendding || Promise.resolve().then(() => {
+      return this._set()
+    })
   }
 
   /**
@@ -105,24 +131,19 @@ export default class WxStore {
    */
   _set() {
     return new Promise((resolve) => {
-      if (!supportProxy) {
+      if (supportProxy) {
+        this._observerSet()
+      } else {
         // 用于不支持Proxy对象
         this._diffSet()
       }
       if (noEmptyObject(this._diffObj)) {
-        // 监听器回调
-        for (const id in this._listener) {
-          // 获取diffObj => 实例的新的diff数据
-          const obj = this._getMapData(this._listener[id].stateMap, this._diffObj)
-          // 执行回调
-          noEmptyObject(obj) && this._listener[id].fn(obj)
-        }
-        // 实例更新
         let count = 0
         let diffObj = { ...this._diffObj }
+        // 实例更新
         this._binds.forEach((that) => {
           // 获取diffObj => 实例的新的diff数据
-          const obj = this._getMapData(that.__stores[this._id].stateMap, this._diffObj)
+          const obj = this._getMapData(that.__stores[this._id].stateMap)
           // set实例对象中
           if (noEmptyObject(obj)) {
             count++
@@ -134,6 +155,20 @@ export default class WxStore {
             })
           }
         })
+        // 监听器回调
+        for (const id in this._listener) {
+          // 监听
+          if (this._isChange(this._listener[id].map)) {
+            
+            // 执行回调
+            this._listener[id].fn(this._listener[id].map.map((key) => {
+              return deepClone(getValue(this._state, toKeys(key)))
+            }))
+          }
+        }
+        if (count <= 0) {
+          resolve(diffObj)
+        }
         this._debug && console.log('diff object:', this._diffObj)
         this._diffObj = {} // 清空diff结果
       } else {
@@ -195,20 +230,20 @@ export default class WxStore {
    */
   on(map, fn, that) {
     if (type(map, STRING)) {
-      map = map.split(',')
+      map = map.split(/\s*\,\s*/g)
     }
     // map必须为obj或者arr 且fn必须为function
-    if (!(type(map, OBJECT) || type(map, ARRAY)) || !type(fn, FUNCTION)) {
-      console.warn('[wxStore] check addListener params')
+    if (!(noEmptyObject(map, OBJECT) || (type(map, ARRAY) && map.length)) || !type(fn, FUNCTION)) {
+      console.warn('[wxStore] check on params')
       return
     }
-    // 获取state=>实例data的指向
-    const stateMap = reverse(map)
+    // 获取监听state的映射
+    map = deepClone(map)
     // 监听器id
     const id = listenerId++
     // 监听器数据保存到this._listener中
     this._listener[id] = {
-      stateMap,
+      map,
       fn
     }
     if (type(that, OBJECT)) {
@@ -232,27 +267,38 @@ export default class WxStore {
   /**
    * 根据具体diff 及 映射map 获得最终setData对象
    * @param {*} map 映射map
-   * @param {*} diffObj diff对象
    */
-  _getMapData(map, diffObj) {
+  _getMapData(map) {
     if (!noEmptyObject(map)) return {}
     const obj = {}
-    // 传入diffObj执行映射转换、传null直接初始化
-    if (diffObj) {
-      // diff结果与映射的双重比对
-      const reg = RegExp(`^(${Object.keys(map).join('|')})((?=(?:\\.|\\[))|$)`)
-      for (const key in diffObj) {
-        let match = false
-        const newKey = key.replace(reg, (s) => {
-          match = true
-          return map[s] || s
-        })
-        if (match) {
-          obj[newKey] = diffObj[key]
-        }
+    // diff结果与映射的双重比对
+    const reg = RegExp(`^(${Object.keys(map).join('|')})((?=(?:\\.|\\[))|$)`)
+    for (const key in this._diffObj) {
+      let match = false
+      const newKey = key.replace(reg, (s) => {
+        match = true
+        return map[s] || s
+      })
+      if (match) {
+        obj[newKey] = this._diffObj[key]
       }
     }
     return obj
+  }
+
+  /**
+   * 状态改变
+   * @param {*} map 
+   */
+  _isChange(map) {
+    // diff结果与映射的双重比对
+    const reg = RegExp(`^(${map.join('|')})((?=(?:\\.|\\[))|$)`)
+    for (const key in this._diffObj) {
+      if (key.match(reg)) {
+        return true
+      }
+    }
+    return false
   }
 }
 
@@ -261,7 +307,7 @@ export default class WxStore {
  * @param {*} ops 实例配置
  * @param {*} isComponent 是否组件
  */
-function attached (ops, isComponent) {
+function Attached (ops, isComponent) {
   ops.stateMap = ops.stateMap || {}
   ops.store = ops.store || {}
   // store必须为对象、stateMap必须为obj或arr
@@ -284,7 +330,7 @@ function attached (ops, isComponent) {
 /**
  * 取消挂载
  */
-function detached () {
+function Detached () {
   // 解除this上的store的绑定
   if (noEmptyObject(this.__stores)) {
     for (const id in this.__stores) {
@@ -311,14 +357,14 @@ export function storePage(ops) {
   // 重写onLoad
   const onLoad = ops.onLoad
   ops.onLoad = function () {
-    attached.call(this, ops)
+    Attached.call(this, ops)
     type(onLoad, FUNCTION) && onLoad.apply(this, [].slice.call(arguments))
   }
   // 重写onUnload
   const onUnload = ops.onUnload
   ops.onUnload = function () {
     type(onUnload, FUNCTION) && onUnload.apply(this, [].slice.call(arguments)) // 执行卸载操作
-    detached.call(this)
+    Detached.call(this)
   }
   Page(ops)
 }
@@ -338,7 +384,7 @@ export function storeComponent(ops) {
   // 重写ready
   const ready = opts.ready
   opts.ready = function () {
-    attached.call(this, ops, true)
+    Attached.call(this, ops, true)
     type(ready, FUNCTION) && ready.apply(this, [].slice.call(arguments))
   }
   opts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops
@@ -346,7 +392,7 @@ export function storeComponent(ops) {
   const detached = opts.detached
   opts.detached = function () {
     type(detached, FUNCTION) && detached.apply(this, [].slice.call(arguments)) // 执行卸载操作
-    detached.call(this)
+    Detached.call(this)
   }
   Component(ops)
 }

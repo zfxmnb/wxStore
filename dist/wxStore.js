@@ -15,6 +15,10 @@ var _instanceUtils = require("./utils/instanceUtils");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
 
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -81,7 +85,7 @@ var WxStore = /*#__PURE__*/function () {
 
         var keyStr = (0, _utils.toKeyStr)(keys, this._state); // 空对象不执行diff update操作
 
-        if ((0, _utils.noEmptyObject)(value)) {
+        if ((0, _utils.noEmptyObject)(value) || (0, _utils.type)(value, _utils.ARRAY) && value.length) {
           // 获取diffObj
           Object.assign(this._diffObj, (0, _diff["default"])(value, (0, _utils.getValue)(this._state, keys), keyStr));
         } else {
@@ -167,19 +171,23 @@ var WxStore = /*#__PURE__*/function () {
         if ((0, _utils.noEmptyObject)(_this3._diffObj)) {
           // 监听器回调
           for (var id in _this3._listener) {
-            // 获取diffObj => 实例的新的diff数据
-            var obj = _this3._getMapData(_this3._listener[id].stateMap, _this3._diffObj); // 执行回调
-
-
-            (0, _utils.noEmptyObject)(obj) && _this3._listener[id].fn(obj);
+            // 监听
+            if (_this3._isChange(_this3._listener[id].map)) {
+              // 执行回调
+              _this3._listener[id].fn(_this3._listener[id].map.map(function (key) {
+                return (0, _utils.deepClone)((0, _utils.getValue)(_this3._state, (0, _utils.toKeys)(key)));
+              }));
+            }
           } // 实例更新
 
 
           var count = 0;
 
+          var diffObj = _objectSpread({}, _this3._diffObj);
+
           _this3._binds.forEach(function (that) {
             // 获取diffObj => 实例的新的diff数据
-            var obj = _this3._getMapData(that.__stores[_this3._id].stateMap, _this3._diffObj); // set实例对象中
+            var obj = _this3._getMapData(that.__stores[_this3._id].stateMap); // set实例对象中
 
 
             if ((0, _utils.noEmptyObject)(obj)) {
@@ -188,7 +196,7 @@ var WxStore = /*#__PURE__*/function () {
                 count--;
 
                 if (count <= 0) {
-                  resolve(obj);
+                  resolve(diffObj);
                 }
               });
             }
@@ -275,22 +283,22 @@ var WxStore = /*#__PURE__*/function () {
     key: "on",
     value: function on(map, fn, that) {
       if ((0, _utils.type)(map, _utils.STRING)) {
-        map = map.split(',');
+        map = map.split(/\s*\,\s*/g);
       } // map必须为obj或者arr 且fn必须为function
 
 
-      if (!((0, _utils.type)(map, _utils.OBJECT) || (0, _utils.type)(map, _utils.ARRAY)) || !(0, _utils.type)(fn, _utils.FUNCTION)) {
-        console.warn('[wxStore] check addListener params');
+      if (!((0, _utils.noEmptyObject)(map, _utils.OBJECT) || (0, _utils.type)(map, _utils.ARRAY) && map.length) || !(0, _utils.type)(fn, _utils.FUNCTION)) {
+        console.warn('[wxStore] check on params');
         return;
-      } // 获取state=>实例data的指向
+      } // 获取监听state的映射
 
 
-      var stateMap = (0, _utils.reverse)(map); // 监听器id
+      map = (0, _utils.deepClone)(map); // 监听器id
 
       var id = listenerId++; // 监听器数据保存到this._listener中
 
       this._listener[id] = {
-        stateMap: stateMap,
+        map: map,
         fn: fn
       };
 
@@ -317,33 +325,48 @@ var WxStore = /*#__PURE__*/function () {
     /**
      * 根据具体diff 及 映射map 获得最终setData对象
      * @param {*} map 映射map
-     * @param {*} diffObj diff对象
      */
 
   }, {
     key: "_getMapData",
-    value: function _getMapData(map, diffObj) {
+    value: function _getMapData(map) {
       if (!(0, _utils.noEmptyObject)(map)) return {};
-      var obj = {}; // 传入diffObj执行映射转换、传null直接初始化
+      var obj = {}; // diff结果与映射的双重比对
 
-      if (diffObj) {
-        // diff结果与映射的双重比对
-        var reg = RegExp("^(".concat(Object.keys(map).join('|'), ")((?=(?:\\.|\\[))|$)"));
+      var reg = RegExp("^(".concat(Object.keys(map).join('|'), ")((?=(?:\\.|\\[))|$)"));
 
-        for (var key in diffObj) {
-          var match = false;
-          var newKey = key.replace(reg, function (s) {
-            match = true;
-            return map[s] || s;
-          });
+      for (var key in this._diffObj) {
+        var match = false;
+        var newKey = key.replace(reg, function (s) {
+          match = true;
+          return map[s] || s;
+        });
 
-          if (match) {
-            obj[newKey] = diffObj[key];
-          }
+        if (match) {
+          obj[newKey] = this._diffObj[key];
         }
       }
 
       return obj;
+    }
+    /**
+     * 状态改变
+     * @param {*} map 
+     */
+
+  }, {
+    key: "_isChange",
+    value: function _isChange(map) {
+      // diff结果与映射的双重比对
+      var reg = RegExp("^(".concat(map.join('|'), ")((?=(?:\\.|\\[))|$)"));
+
+      for (var key in this._diffObj) {
+        if (key.match(reg)) {
+          return true;
+        }
+      }
+
+      return false;
     }
   }]);
 
@@ -358,7 +381,7 @@ var WxStore = /*#__PURE__*/function () {
 
 exports["default"] = WxStore;
 
-function attached(ops, isComponent) {
+function Attached(ops, isComponent) {
   var _this4 = this;
 
   ops.stateMap = ops.stateMap || {};
@@ -389,7 +412,7 @@ function attached(ops, isComponent) {
  */
 
 
-function detached() {
+function Detached() {
   // 解除this上的store的绑定
   if ((0, _utils.noEmptyObject)(this.__stores)) {
     for (var id in this.__stores) {
@@ -423,7 +446,7 @@ function storePage(ops) {
   var onLoad = ops.onLoad;
 
   ops.onLoad = function () {
-    attached.call(this, ops);
+    Attached.call(this, ops);
     (0, _utils.type)(onLoad, _utils.FUNCTION) && onLoad.apply(this, [].slice.call(arguments));
   }; // 重写onUnload
 
@@ -433,7 +456,7 @@ function storePage(ops) {
   ops.onUnload = function () {
     (0, _utils.type)(onUnload, _utils.FUNCTION) && onUnload.apply(this, [].slice.call(arguments)); // 执行卸载操作
 
-    detached.call(this);
+    Detached.call(this);
   };
 
   Page(ops);
@@ -457,7 +480,7 @@ function storeComponent(ops) {
   var ready = opts.ready;
 
   opts.ready = function () {
-    attached.call(this, ops, true);
+    Attached.call(this, ops, true);
     (0, _utils.type)(ready, _utils.FUNCTION) && ready.apply(this, [].slice.call(arguments));
   };
 
@@ -468,7 +491,7 @@ function storeComponent(ops) {
   opts.detached = function () {
     (0, _utils.type)(detached, _utils.FUNCTION) && detached.apply(this, [].slice.call(arguments)); // 执行卸载操作
 
-    detached.call(this);
+    Detached.call(this);
   };
 
   Component(ops);
