@@ -60,6 +60,8 @@ var WxStore = /*#__PURE__*/function () {
 
     this._diffObj = {}; // diff结果
 
+    this._observerList = []; // Proxy监听state
+
     this._listenerId = 1; // 监听器id
 
     this._listener = {}; // 监听state改变事件
@@ -80,21 +82,65 @@ var WxStore = /*#__PURE__*/function () {
   _createClass(WxStore, [{
     key: "_observer",
     value: function _observer(keys, value) {
-      if (keys.length) {
+      var i = 0;
+      var len = keys.length;
+
+      while (i < this._observerList.length) {
+        var item = this._observerList[i];
+
+        if (item.keys.length >= len) {
+          var match = true;
+
+          for (var j = 0; j < len; j++) {
+            if (keys[j] !== item.keys[j]) {
+              match = false;
+              break;
+            }
+          }
+
+          if (match) {
+            this._observerList.splice(i, 1);
+          } else {
+            i++;
+          }
+        } else {
+          i++;
+        }
+      }
+
+      this._observerList.push({
+        keys: keys,
+        value: value
+      });
+    }
+    /**
+     * 设置监听state到_state
+     */
+
+  }, {
+    key: "_observerSet",
+    value: function _observerSet() {
+      var _this2 = this;
+
+      this._observerList.forEach(function (_ref2) {
+        var keys = _ref2.keys,
+            value = _ref2.value;
         value = (0, _utils.deepClone)(value); // 根据对象key 提取 state 与对于value比对
 
-        var keyStr = (0, _utils.toKeyStr)(keys, this._state); // 空对象不执行diff update操作
+        var keyStr = (0, _utils.toKeyStr)(keys, _this2._state); // 空对象不执行diff update操作
 
         if ((0, _utils.noEmptyObject)(value) || (0, _utils.type)(value, _utils.ARRAY) && value.length) {
           // 获取diffObj
-          Object.assign(this._diffObj, (0, _diff["default"])(value, (0, _utils.getValue)(this._state, keys), keyStr));
+          Object.assign(_this2._diffObj, (0, _diff["default"])(value, (0, _utils.getValue)(_this2._state, keys), keyStr));
         } else {
-          Object.assign(this._diffObj, _defineProperty({}, keyStr, value));
+          Object.assign(_this2._diffObj, _defineProperty({}, keyStr, value));
         } // 写入store state
 
 
-        (0, _utils.setValue)(this._state, keys, value);
-      }
+        (0, _utils.setValue)(_this2._state, keys, value);
+      });
+
+      this._observerList = [];
     }
     /**
      * 设置state
@@ -142,16 +188,12 @@ var WxStore = /*#__PURE__*/function () {
   }, {
     key: "_merge",
     value: function _merge() {
-      var _this2 = this;
+      var _this3 = this;
 
       // Promise 异步实现合并set
-      if ((0, _utils.noEmptyObject)(this._diffObj)) {
-        return this._pendding = this._pendding || Promise.resolve().then(function () {
-          return _this2._set();
-        });
-      } else {
-        return Promise.resolve({});
-      }
+      return this._pendding = this._pendding || Promise.resolve().then(function () {
+        return _this3._set();
+      });
     }
     /**
      * 设置映射数据
@@ -160,34 +202,25 @@ var WxStore = /*#__PURE__*/function () {
   }, {
     key: "_set",
     value: function _set() {
-      var _this3 = this;
+      var _this4 = this;
 
       return new Promise(function (resolve) {
-        if (!supportProxy) {
+        if (supportProxy) {
+          _this4._observerSet();
+        } else {
           // 用于不支持Proxy对象
-          _this3._diffSet();
+          _this4._diffSet();
         }
 
-        if ((0, _utils.noEmptyObject)(_this3._diffObj)) {
-          // 监听器回调
-          for (var id in _this3._listener) {
-            // 监听
-            if (_this3._isChange(_this3._listener[id].map)) {
-              // 执行回调
-              _this3._listener[id].fn(_this3._listener[id].map.map(function (key) {
-                return (0, _utils.deepClone)((0, _utils.getValue)(_this3._state, (0, _utils.toKeys)(key)));
-              }));
-            }
-          } // 实例更新
-
-
+        if ((0, _utils.noEmptyObject)(_this4._diffObj)) {
           var count = 0;
 
-          var diffObj = _objectSpread({}, _this3._diffObj);
+          var diffObj = _objectSpread({}, _this4._diffObj); // 实例更新
 
-          _this3._binds.forEach(function (that) {
+
+          _this4._binds.forEach(function (that) {
             // 获取diffObj => 实例的新的diff数据
-            var obj = _this3._getMapData(that.__stores[_this3._id].stateMap); // set实例对象中
+            var obj = _this4._getMapData(that.__stores[_this4._id].stateMap); // set实例对象中
 
 
             if ((0, _utils.noEmptyObject)(obj)) {
@@ -200,15 +233,30 @@ var WxStore = /*#__PURE__*/function () {
                 }
               });
             }
-          });
+          }); // 监听器回调
 
-          _this3._debug && console.log('diff object:', _this3._diffObj);
-          _this3._diffObj = {}; // 清空diff结果
+
+          for (var id in _this4._listener) {
+            // 监听
+            if (_this4._isChange(_this4._listener[id].map)) {
+              // 执行回调
+              _this4._listener[id].fn(_this4._listener[id].map.map(function (key) {
+                return (0, _utils.deepClone)((0, _utils.getValue)(_this4._state, (0, _utils.toKeys)(key)));
+              }));
+            }
+          }
+
+          if (count <= 0) {
+            resolve(diffObj);
+          }
+
+          _this4._debug && console.log('diff object:', _this4._diffObj);
+          _this4._diffObj = {}; // 清空diff结果
         } else {
           resolve({});
         }
 
-        delete _this3._pendding; // 清除
+        delete _this4._pendding; // 清除
       });
     }
     /**
@@ -382,7 +430,7 @@ var WxStore = /*#__PURE__*/function () {
 exports["default"] = WxStore;
 
 function Attached(ops, isComponent) {
-  var _this4 = this;
+  var _this5 = this;
 
   ops.stateMap = ops.stateMap || {};
   ops.store = ops.store || {}; // store必须为对象、stateMap必须为obj或arr
@@ -402,7 +450,7 @@ function Attached(ops, isComponent) {
           stateMap = item.stateMap;
 
       if (store instanceof WxStore && ((0, _utils.type)(stateMap, _utils.OBJECT) || (0, _utils.type)(stateMap, _utils.ARRAY))) {
-        store.bind(_this4, stateMap);
+        store.bind(_this5, stateMap);
       }
     });
   }

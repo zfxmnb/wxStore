@@ -27,8 +27,8 @@ function deepProxy(object, handler) {
         var keyList = [].concat(keys, [key]);
         if (obj[key] === value) return true;
 
-        if (object instanceof Array && key === 'length') {
-          handler([].concat(keys), object.slice(0, value));
+        if (obj instanceof Array && key === 'length') {
+          handler([].concat(keys), obj.slice(0, value));
         } else {
           handler(keyList, value);
         }
