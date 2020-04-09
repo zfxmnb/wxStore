@@ -37,6 +37,7 @@ export default class WxStore {
   _observer (keys, value) {
     let i = 0
     const len = keys.length
+    // 判断是否覆盖已有，如果覆盖则移除旧的push新的
     while (i < this._observerList.length) {
       const item = this._observerList[i]
       if (item.keys.length >= len) {
@@ -305,14 +306,14 @@ export default class WxStore {
 /**
  * 挂载
  * @param {*} ops 实例配置
- * @param {*} isComponent 是否组件
+ * @param {*} related 是否与Page store有关联性
  */
-function Attached (ops, isComponent) {
+function Attached (ops, related) {
   ops.stateMap = ops.stateMap || {}
   ops.store = ops.store || {}
   // store必须为对象、stateMap必须为obj或arr
   if (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY)) {
-    this.store = ops.store instanceof WxStore ? ops.store : isComponent ? getCurrentPage(this).store : new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
+    this.store = ops.store instanceof WxStore ? ops.store : related ? getCurrentPage(this).store : new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
     this.store.bind(this, ops.stateMap) // 绑定是不初始化data、在实例生产前已写入options中
   }
   // stores 必须为数组
@@ -378,13 +379,13 @@ exports.diff = diff
  * 重写Component方法，提供自动绑定store自定移除store方法
  * @param {*} ops 组件初始化配置
  */
-export function storeComponent(ops) {
+export function storeComponent(ops, related = true) {
   setOptions(ops) // 初始化data、作用是给data里面填入store中的默认state
   let opts = ops.lifetimes && ops.lifetimes.ready ? ops.lifetimes : ops
   // 重写ready
   const ready = opts.ready
   opts.ready = function () {
-    Attached.call(this, ops, true)
+    Attached.call(this, ops, related)
     type(ready, FUNCTION) && ready.apply(this, [].slice.call(arguments))
   }
   opts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops

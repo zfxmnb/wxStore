@@ -41,13 +41,13 @@
 
 wxStore 提供7个方法:
 
-* storePage(store, stateMap)    创建页面 store一般是store实例的配置，也可以是全局的store实例，stateMap为state到data的映射
-* storeComponent(store, stateMap)     创建组件 store一般是store实例的配置，也可以是全局的store实例，默认不填写指向Page的store实例，stateMap为state到data的映射
+* storePage({store, stateMap})    创建页面 store一般是store实例的配置，也可以是全局的store实例，stateMap为state到data的映射
+* storeComponent({store, stateMap}, related)     创建组件 store一般是store实例的配置，也可以是全局的store实例，默认不填写指向Page的store实例，stateMap为state到data的映射; related控制组件是否与根page的store实例关联，默认true
 * store.bind(this, stateMap)    store为实例，bind方法用于与当前页面或者组件绑定，一般用于全局状态绑定，可绑定多个全局store实例
 * store.unBind(this)    解除绑定，一般当前页面使用storePage、storeComponent无需单独调用
 * store.on(stateMap, fn, this)     监听stateMap中的数据改动，return id，并在fn回调中返回结果，使用场景为不更新视图的state变化, this为页面/组件实例，用于页面/组件销毁时自动remove
 * store.remove(id)    清除监听器，id = store.on, 页面组件销毁前主动调用清除
-* store.update()    用于更新state状态改变
+* store.update()    用于更新state状态改变，return Promise
 
 纯组件使用小程序自带的 Component
 
