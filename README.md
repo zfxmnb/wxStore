@@ -208,7 +208,7 @@ globel.bind(this, {
 
 ```
  ---------------     -------------------     --------------     ----------------------     -----------
-| update n次 | → |  Proxy & diff n次  | → |  update 1次  | → |  stateMap 映射到data  | → ｜  更新视图  |
+| update n次    | → |  Proxy & diff n次  | → |  update 1次  | → |  stateMap 映射到data  | → ｜  更新视图  |
  ---------------     -------------------     --------------     ----------------------     -----------
 ```
 * 多次update会对数据进行多次diff，同时会把set的数据写入state
@@ -218,7 +218,6 @@ globel.bind(this, {
 
 * 通过深层比较新数据与就数据的结构差异，并输以 x.y[1].z 的形式输出
 * 可以支持非全局diff，比如只diff x.y的数据，提升diff效率
-* 支持性能模式对push行为的数组进行diff优化，如：[1, 2, 3, 4]、[1, 2, 3, 4, 5]，数组前4项不进行diff比较
 
 ## License
 MIT [@zfxmnb](https://github.com/zfxmnb)
