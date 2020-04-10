@@ -29,8 +29,11 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 var supportProxy = !!Proxy; // 是否支持Proxy
 
-var storeId = 1;
-var listenerId = 1;
+var STORES = {}; // store 实例集
+
+var storeId = 1; // store id
+
+var listenerId = 1; // 监听器id
 
 var WxStore = /*#__PURE__*/function () {
   function WxStore() {
@@ -48,7 +51,7 @@ var WxStore = /*#__PURE__*/function () {
 
     this._state = (0, _utils.deepClone)(state);
 
-    if (supportProxy && (0, _utils.noEmptyObject)(state)) {
+    if (supportProxy) {
       (0, _utils.defineStatic)(this, 'state', (0, _observer2["default"])((0, _utils.deepClone)(state), this._observer.bind(this))); // 监听对象变化
     } else {
       this.state = (0, _utils.deepClone)(state); // state
@@ -83,7 +86,7 @@ var WxStore = /*#__PURE__*/function () {
     key: "_observer",
     value: function _observer(keys, value) {
       var i = 0;
-      var len = keys.length;
+      var len = keys.length; // 判断是否覆盖已有，如果覆盖则移除旧的push新的
 
       while (i < this._observerList.length) {
         var item = this._observerList[i];
@@ -263,11 +266,14 @@ var WxStore = /*#__PURE__*/function () {
      * 绑定对象
      * @param {*} that 实例Page/Component
      * @param {*} map state => 实例data 的映射map
+     * @param {*} extend bind时映射到data的扩展字段
      */
 
   }, {
     key: "bind",
     value: function bind(that, map) {
+      var extend = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
       // 必须为实例对象
       if (!(0, _utils.type)(that, _utils.OBJECT)) {
         console.warn('[wxStore] check bind this');
@@ -281,18 +287,21 @@ var WxStore = /*#__PURE__*/function () {
       } // 获取state=>实例data的指向
 
 
+      var id = this._id;
       var stateMap = (0, _utils.reverse)(map);
       var obj = initData(stateMap, this._state); // 初始化实例的data
 
-      (0, _utils.noEmptyObject)(obj) && that.setData(obj); // 执行set
+      Object.assign(obj, extend); // bind 初始化setData扩展字段
+
+      that.setData(obj); // 执行set
 
       that.__stores = (0, _utils.type)(that.__stores, _utils.OBJECT) ? that.__stores : {}; // 初始化实例对象上的状态映射表
       // 映射对象写入实例对象
 
-      if (that.__stores[this._id]) {
-        Object.assign(that.__stores[this._id].stateMap, stateMap);
+      if (that.__stores[id]) {
+        Object.assign(that.__stores[id].stateMap, stateMap);
       } else {
-        that.__stores[this._id] = {
+        that.__stores[id] = {
           stateMap: stateMap,
           store: this
         };
@@ -301,6 +310,8 @@ var WxStore = /*#__PURE__*/function () {
       !this._binds.find(function (item) {
         return item === that;
       }) && this._binds.push(that); // 实例写入this._binds数组中，用于update找到实例对象
+
+      STORES[id] || (STORES[id] = this); // 已bind store 存入STORES集合
     }
     /**
      * 解除绑定
@@ -319,6 +330,11 @@ var WxStore = /*#__PURE__*/function () {
 
           break;
         }
+      } // bind列表空时，在STORES删除store
+
+
+      if (!this._binds.length) {
+        delete STORES[this._id];
       }
     }
     /**
@@ -423,22 +439,25 @@ var WxStore = /*#__PURE__*/function () {
 /**
  * 挂载
  * @param {*} ops 实例配置
- * @param {*} isComponent 是否组件
+ * @param {*} fixed 组件是否脱离Page store采用自己的store
  */
 
 
 exports["default"] = WxStore;
 
-function Attached(ops, isComponent) {
+function Attached(ops, fixed) {
   var _this5 = this;
 
   ops.stateMap = ops.stateMap || {};
   ops.store = ops.store || {}; // store必须为对象、stateMap必须为obj或arr
 
-  if ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY)) {
-    this.store = ops.store instanceof WxStore ? ops.store : isComponent ? (0, _instanceUtils.getCurrentPage)(this).store : new WxStore(ops.store); // 传入已经是WxStore实例则直接赋值，否者实例化
+  if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {
+    var STOREID = this.properties.STOREID;
+    this.store = ops.store instanceof WxStore ? ops.store : STORES[STOREID] || !fixed && (0, _instanceUtils.getCurrentPage)(this).store || new WxStore(ops.store); // 传入已经是WxStore实例则直接赋值，否者实例化
 
-    this.store.bind(this, ops.stateMap); // 绑定是不初始化data、在实例生产前已写入options中
+    this.store.bind(this, ops.stateMap, fixed ? {
+      STOREID: this.store._id
+    } : {}); // 绑定是不初始化data、在实例生产前已写入options中
   } // stores 必须为数组
 
 
@@ -494,7 +513,7 @@ function storePage(ops) {
   var onLoad = ops.onLoad;
 
   ops.onLoad = function () {
-    Attached.call(this, ops);
+    Attached.call(this, ops, true);
     (0, _utils.type)(onLoad, _utils.FUNCTION) && onLoad.apply(this, [].slice.call(arguments));
   }; // 重写onUnload
 
@@ -521,15 +540,16 @@ exports.diff = _diff["default"];
  */
 
 function storeComponent(ops) {
-  setOptions(ops); // 初始化data、作用是给data里面填入store中的默认state
+  setOptions(ops, true); // 初始化data、作用是给relateddata里面填入store中的默认state
 
-  var opts = ops.lifetimes && ops.lifetimes.ready ? ops.lifetimes : ops; // 重写ready
+  var name = ops.fixed ? 'attached' : 'ready';
+  var opts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops; // 重写ready
 
-  var ready = opts.ready;
+  var init = opts[name];
 
-  opts.ready = function () {
-    Attached.call(this, ops, true);
-    (0, _utils.type)(ready, _utils.FUNCTION) && ready.apply(this, [].slice.call(arguments));
+  opts[name] = function () {
+    Attached.call(this, ops, ops.fixed);
+    (0, _utils.type)(init, _utils.FUNCTION) && init.apply(this, [].slice.call(arguments));
   };
 
   opts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops; // 重写detached
@@ -547,16 +567,25 @@ function storeComponent(ops) {
 /**
  * 根据 store、stateMap在页面、组件初始化配置初始化data，组件要初始化data也必须传store
  * @param {*} ops 页面初始化时
+ * @param {*} isComponent 组件
  */
 
 
-function setOptions(ops) {
+function setOptions(ops, isComponent) {
   if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {
     var reverseMap = (0, _utils.reverse)(ops.stateMap);
     var obj = initData(reverseMap, ops.store.state); // 初始化实例的data
 
     ops.data = (0, _utils.type)(ops.data, _utils.OBJECT) ? ops.data : {};
     Object.assign(ops.data, obj);
+  } // 给组件注入STOREID属性
+
+
+  if (isComponent) {
+    ops.properties = ops.properties || {};
+    ops.properties = {
+      STOREID: Number
+    };
   }
 
   return ops;
