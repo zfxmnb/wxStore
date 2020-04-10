@@ -3,6 +3,7 @@
 > 状态管理、跨页通讯、状态变更订阅
 
 ---
+
 - [前言](#前言)
 - [特点](#特点)
 - [API](#API)
@@ -10,10 +11,10 @@
 	- [定义全局store](#定义全局store)
   - [定义页面store](#定义页面store)
   - [创建页面](#创建页面)
-  - [绑定数据](#绑定数据)
   - [更新页面](#更新页面)
   - [创建组件](#创建组件)
   - [更新组件](#更新组件)
+  - [组件级状态管理](#组件级状态管理)
   - [跨页面同步数据](#跨页面同步数据)
   - [调试](#调试)
 - [注意事项](#注意事项)
@@ -31,10 +32,11 @@
 * 旧项目改造成本低
 * 支持 x.y[1].z 小程序原生setData写法
 * 可绑定多个全局store，适用更多业务场景
+* 支持组件级的状态管理
 * 建议通过actions更改state，集中管理更改state行为
 * stateMap映射，随意更改映射数据的字段名， 且避免无用数据写入data，页面组件中也无需设置data默认
 * 自动合并同步set操作，避免视图更新频繁问题，也支持立即更新视图操作
-* 支持订阅模式，适用于无需更新视图的使用场景
+* 支持订阅模式，适用于无需更新视图的使用场景或状态预处理
 * 组件通过原生getPageId的方式获取与Page的关系，避免页面隐藏时组件初始化错误的绑定store【getCurrentPages()[getCurrentPages().length - 1]】，但基础库需为2.7.1以上
 
 ## API
@@ -42,7 +44,7 @@
 wxStore 提供7个方法:
 
 * storePage({store, stateMap})    创建页面 store一般是store实例的配置，也可以是全局的store实例，stateMap为state到data的映射
-* storeComponent({store, stateMap}, related)     创建组件 store一般是store实例的配置，也可以是全局的store实例，默认不填写指向Page的store实例，stateMap为state到data的映射; related控制组件是否与根page的store实例关联，默认true
+* storeComponent({store, stateMap, isFixed})     创建组件 store一般是store实例的配置，也可以是全局的store实例，默认不填写指向Page的store实例，stateMap为state到data的映射; isFixed控制组件是否使用组件store
 * store.bind(this, stateMap)    store为实例，bind方法用于与当前页面或者组件绑定，一般用于全局状态绑定，可绑定多个全局store实例
 * store.unBind(this)    解除绑定，一般当前页面使用storePage、storeComponent无需单独调用
 * store.on(stateMap, fn, this)     监听stateMap中的数据改动，return id，并在fn回调中返回结果，使用场景为不更新视图的state变化, this为页面/组件实例，用于页面/组件销毁时自动remove
@@ -124,10 +126,7 @@ storePage({
     }
   }] // 类似bind方法，建议使用
 })
-
 ```
-
-### 绑定数据
 
 ```jsx
 <view class="tip">10秒内点击绿色区域，每点用1次得1分 最高：{{ maxScore }}</view>
@@ -180,6 +179,45 @@ this.store.actions.click() // 页面store
 globel.actions.x() // 全局store
 ```
 
+### 组件级状态管理
+
+创建组件时options fixed: true, 表示这个组件的this.store将优先使用 属性STOREID【store id】对应的store，如果属性未找到对应store，则通过store配置生成新增store实例；STOREID将变成新store实例的唯一id，并且子组件与当前组件的将通过STOREID进行关联
+
+```js
+import { storeComponent } from './../../wxStore'
+storeComponent({
+  fixed: true,
+  store: {
+    state: {
+      a: true
+    },
+    actions: {
+      change () {
+        this.state.a = !this.state.a
+        this.update()
+      }
+    }
+  },
+  stateMap: {
+    A: 'a'
+  },
+  /**
+   * 组件的方法列表
+   */
+  methods: {
+    change () {
+      this.store.actions.change()
+    }
+  }
+})
+```
+
+```jsx
+<button bind:tap="change">切换{{ A }}</button>
+<!-- sub 组件将关联当前组件的store -->
+<sub STOREID="{{ STOREID }}"/>
+```
+
 ### 跨页面同步数据
 
 跨页面状态管理使用stores绑定store全局实例，或者在生命周期中使用bind绑定
@@ -201,6 +239,7 @@ globel.bind(this, {
 * 基础库版本2.7.1以上
 * 如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store方法
 * 在为使用storePage、storeComponent创建页面组件时，ubBind需要在页面、组件注销前执行、否则无需调用
+* 组件级状态管理通过STOREID关联，this.data.STOREID 无需开发者定义，但该该组件属性必须填写
 * 具体使用有疑问可以参考代码片段
 * beta版本
 
@@ -211,6 +250,7 @@ globel.bind(this, {
 | update n次    | → |  Proxy & diff n次  | → |  update 1次  | → |  stateMap 映射到data  | → ｜  更新视图  |
  ---------------     -------------------     --------------     ----------------------     -----------
 ```
+
 * 多次update会对数据进行多次diff，同时会把set的数据写入state
 * 多次diff结果合并然后update的时候通过stateMap映射到具体页面、组件data实现视图更新
 
@@ -220,4 +260,5 @@ globel.bind(this, {
 * 可以支持非全局diff，比如只diff x.y的数据，提升diff效率
 
 ## License
+
 MIT [@zfxmnb](https://github.com/zfxmnb)

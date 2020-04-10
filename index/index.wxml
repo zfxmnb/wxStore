@@ -9,3 +9,4 @@
   <view class="btn" bindtap="goto">开始</view>
   <view class="btn" bindtap="clear">清除</view>
 </view>
+<fixed/>

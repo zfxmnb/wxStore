@@ -1,0 +1,3 @@
+<button bind:tap="change">切换{{ A }}</button>
+<!-- sub 组件将关联当前组件的store -->
+<sub STOREID="{{ STOREID }}"/>

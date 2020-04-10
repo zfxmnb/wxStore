@@ -1,19 +1,20 @@
 /**
  * 微信小程序状态管理
  * 1、基础库版本2.7.1以上
- * 2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法使用store
+ * 2、如果组件和页面是同时加载时，Component ready时才绑定store attached中可能无法找到this.store
  */
 import deepProxy from './utils/observer'
 import diff from './utils/diff'
 import { deepClone, toKeys, toKeyStr, noEmptyObject, reverse, getValue, setValue, defineStatic, type, OBJECT, ARRAY, FUNCTION, STRING } from './utils/utils'
 import { getCurrentPage } from './utils/instanceUtils'
 const supportProxy = !!Proxy // 是否支持Proxy
-let storeId = 1
-let listenerId = 1
+const STORES = {} // store 实例集
+let storeId = 1 // store id
+let listenerId = 1 // 监听器id
 export default class WxStore {
   constructor({ state = {}, actions = {}, debug = false } = {}) {
     this._state = deepClone(state)
-    if (supportProxy && noEmptyObject(state)) {
+    if (supportProxy) {
       defineStatic(this, 'state', deepProxy(deepClone(state), this._observer.bind(this))) // 监听对象变化
     } else {
       this.state = deepClone(state) // state
@@ -183,8 +184,9 @@ export default class WxStore {
    * 绑定对象
    * @param {*} that 实例Page/Component
    * @param {*} map state => 实例data 的映射map
+   * @param {*} extend bind时映射到data的扩展字段
    */
-  bind(that, map) {
+  bind(that, map, extend = {}) {
     // 必须为实例对象
     if (!type(that, OBJECT)) {
       console.warn('[wxStore] check bind this')
@@ -196,17 +198,20 @@ export default class WxStore {
       map = {}
     }
     // 获取state=>实例data的指向
+    const id = this._id
     const stateMap = reverse(map)
     const obj = initData(stateMap, this._state) // 初始化实例的data
-    noEmptyObject(obj) && that.setData(obj) // 执行set
+    Object.assign(obj, extend) // bind 初始化setData扩展字段
+    that.setData(obj) // 执行set
     that.__stores = type(that.__stores, OBJECT) ? that.__stores : {} // 初始化实例对象上的状态映射表
     // 映射对象写入实例对象
-    if (that.__stores[this._id]) {
-      Object.assign(that.__stores[this._id].stateMap, stateMap)
+    if (that.__stores[id]) {
+      Object.assign(that.__stores[id].stateMap, stateMap)
     } else {
-      that.__stores[this._id] = { stateMap, store: this }
+      that.__stores[id] = { stateMap, store: this }
     }
     !this._binds.find(item => item === that) && this._binds.push(that) // 实例写入this._binds数组中，用于update找到实例对象
+    STORES[id] || (STORES[id] = this) // 已bind store 存入STORES集合
   }
 
   /**
@@ -221,6 +226,10 @@ export default class WxStore {
         this._binds.splice(i, 1)
         break
       }
+    }
+    // bind列表空时，在STORES删除store
+    if (!this._binds.length) {
+      delete STORES[this._id]
     }
   }
 
@@ -306,15 +315,17 @@ export default class WxStore {
 /**
  * 挂载
  * @param {*} ops 实例配置
- * @param {*} related 是否与Page store有关联性
+ * @param {*} fixed 组件是否脱离Page store采用自己的store
  */
-function Attached (ops, related) {
+function Attached (ops, fixed) {
   ops.stateMap = ops.stateMap || {}
   ops.store = ops.store || {}
   // store必须为对象、stateMap必须为obj或arr
-  if (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY)) {
-    this.store = ops.store instanceof WxStore ? ops.store : related ? getCurrentPage(this).store : new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
-    this.store.bind(this, ops.stateMap) // 绑定是不初始化data、在实例生产前已写入options中
+  if (type(ops.store, OBJECT) && (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY))) {
+    const { STOREID } = this.properties
+    this.store = ops.store instanceof WxStore ? ops.store
+      : STORES[STOREID] || (!fixed && getCurrentPage(this).store) || new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
+    this.store.bind(this, ops.stateMap, fixed ? { STOREID: this.store._id }: {}) // 绑定是不初始化data、在实例生产前已写入options中
   }
   // stores 必须为数组
   if (type(ops.stores, ARRAY)) {
@@ -358,7 +369,7 @@ export function storePage(ops) {
   // 重写onLoad
   const onLoad = ops.onLoad
   ops.onLoad = function () {
-    Attached.call(this, ops)
+    Attached.call(this, ops, true)
     type(onLoad, FUNCTION) && onLoad.apply(this, [].slice.call(arguments))
   }
   // 重写onUnload
@@ -379,14 +390,15 @@ exports.diff = diff
  * 重写Component方法，提供自动绑定store自定移除store方法
  * @param {*} ops 组件初始化配置
  */
-export function storeComponent(ops, related = true) {
-  setOptions(ops) // 初始化data、作用是给data里面填入store中的默认state
-  let opts = ops.lifetimes && ops.lifetimes.ready ? ops.lifetimes : ops
+export function storeComponent(ops) {
+  setOptions(ops, true) // 初始化data、作用是给relateddata里面填入store中的默认state
+  const name = ops.fixed ? 'attached' : 'ready'
+  let opts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops
   // 重写ready
-  const ready = opts.ready
-  opts.ready = function () {
-    Attached.call(this, ops, related)
-    type(ready, FUNCTION) && ready.apply(this, [].slice.call(arguments))
+  const init = opts[name]
+  opts[name] = function () {
+    Attached.call(this, ops, ops.fixed)
+    type(init, FUNCTION) && init.apply(this, [].slice.call(arguments))
   }
   opts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops
   // 重写detached
@@ -401,13 +413,21 @@ export function storeComponent(ops, related = true) {
 /**
  * 根据 store、stateMap在页面、组件初始化配置初始化data，组件要初始化data也必须传store
  * @param {*} ops 页面初始化时
+ * @param {*} isComponent 组件
  */
-function setOptions(ops) {
+function setOptions(ops, isComponent) {
   if (type(ops.store, OBJECT) && (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY))) {
     const reverseMap = reverse(ops.stateMap)
     const obj = initData(reverseMap, ops.store.state) // 初始化实例的data
     ops.data = type(ops.data, OBJECT) ? ops.data : {}
     Object.assign(ops.data, obj)
+  }
+  // 给组件注入STOREID属性
+  if (isComponent) {
+    ops.properties = ops.properties || {}
+    ops.properties = {
+      STOREID: Number
+    }
   }
   return ops
 }

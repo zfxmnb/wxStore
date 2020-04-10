@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "快快点首页",
-  "usingComponents": {}
+  "usingComponents": {
+    "fixed": "../components/fixed/fixed"
+  }
 }
