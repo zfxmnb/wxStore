@@ -1,6 +1,6 @@
 {
   "name": "@fanx/wxstore",
-  "version": "1.0.0-beta14",
+  "version": "1.0.0",
   "description": "wechat miniprogram store manager",
   "main": "dist/wxStore.js",
   "repository": {
@@ -14,6 +14,7 @@
     "wx"
   ],
   "scripts": {
+    "commit": "git-cz",
     "build": "babel wxStore.js -o dist/wxStore.js && babel utils -d dist/utils",
     "test": "babel-node ./node_modules/.bin/mocha test/main.js"
   },
@@ -26,7 +27,14 @@
     "@babel/plugin-transform-runtime": "^7.7.6",
     "@babel/preset-env": "^7.7.6",
     "@babel/runtime": "^7.7.7",
+    "commitizen": "^4.0.4",
+    "cz-conventional-changelog": "^3.1.0",
     "mocha": "^7.1.1"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-conventional-changelog"
+    }
   },
   "author": "zengfanxing",
   "license": "MIT"

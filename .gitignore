@@ -3,6 +3,7 @@ node_modules
 
 # YARN
 yarn.lock
+yarn-error.log
 .yarnrc
 
 # OS or Editor folders

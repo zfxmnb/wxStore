@@ -23,7 +23,6 @@ export default class WxStore {
     this._binds = [] // 绑定的实例对象
     this._diffObj = {} // diff结果
     this._observerList = [] // Proxy监听state
-    this._listenerId = 1 // 监听器id
     this._listener = {} // 监听state改变事件
     this._debug = debug // 开启debug模式后会输出没吃diff数据
     defineStatic(this, 'actions', {}) // 行为方法
@@ -62,7 +61,7 @@ export default class WxStore {
   }
 
   /**
-   * 设置监听state到_state
+   * 将state监听到的变化写入diff对象中用于最终的setData，且将变化同步到_state
    */
   _observerSet () {
     this._observerList.forEach(({ keys, value }) => {
@@ -78,7 +77,7 @@ export default class WxStore {
           [keyStr]: value
         })
       }
-      // 写入store state
+      // 同步到_state
       setValue(this._state, keys, value)
     })
     this._observerList = []
@@ -104,7 +103,7 @@ export default class WxStore {
    * @param {*} imm 是否立即更新视图
    */
   update(obj, imm) {
-    // 不支持proxy的兼容
+    // 支持update写入更改state
     if (type(obj, OBJECT)) {
       for (const key in obj) {
         const keys = toKeys(key)
@@ -112,8 +111,10 @@ export default class WxStore {
       }
     }
     if (imm) {
+      // 立即执行
       return this._set()
     } else {
+      // 合并执行
       return this._merge()
     }
   }
@@ -122,7 +123,7 @@ export default class WxStore {
    * 合并多次set
    */
   _merge () {
-    // Promise 异步实现合并set
+    // Promise实现合并set
     return this._pendding = this._pendding || Promise.resolve().then(() => {
       return this._set()
     })
@@ -134,9 +135,10 @@ export default class WxStore {
   _set() {
     return new Promise((resolve) => {
       if (supportProxy) {
+        // 支持Proxy的
         this._observerSet()
       } else {
-        // 用于不支持Proxy对象
+        // 用于不支持Proxy
         this._diffSet()
       }
       if (noEmptyObject(this._diffObj)) {
@@ -161,7 +163,6 @@ export default class WxStore {
         for (const id in this._listener) {
           // 监听
           if (this._isChange(this._listener[id].map)) {
-            
             // 执行回调
             this._listener[id].fn(this._listener[id].map.map((key) => {
               return deepClone(getValue(this._state, toKeys(key)))
@@ -171,6 +172,7 @@ export default class WxStore {
         if (count <= 0) {
           resolve(diffObj)
         }
+        // debug diff 结果输出
         this._debug && console.log('diff object:', this._diffObj)
         this._diffObj = {} // 清空diff结果
       } else {
@@ -297,7 +299,7 @@ export default class WxStore {
   }
 
   /**
-   * 状态改变
+   * 监听的对象是否修改
    * @param {*} map 
    */
   _isChange(map) {
@@ -320,9 +322,10 @@ export default class WxStore {
 function Attached (ops, fixed) {
   ops.stateMap = ops.stateMap || {}
   ops.store = ops.store || {}
-  // store必须为对象、stateMap必须为obj或arr
+  // store必须为对象、stateMap必须为Object或Array
   if (type(ops.store, OBJECT) && (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY))) {
     const { STOREID } = this.properties
+    // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，fixed === true 使用页面级store， 否则通过store配置生产新的store
     this.store = ops.store instanceof WxStore ? ops.store
       : STORES[STOREID] || (!fixed && getCurrentPage(this).store) || new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
     this.store.bind(this, ops.stateMap, fixed ? { STOREID: this.store._id }: {}) // 绑定是不初始化data、在实例生产前已写入options中
@@ -330,7 +333,7 @@ function Attached (ops, fixed) {
   // stores 必须为数组
   if (type(ops.stores, ARRAY)) {
     ops.stores.forEach((item = {}) => {
-      // store必须为WxStore对象、stateMap必须为obj或arr
+      // store必须为WxStore对象、stateMap必须为Object或Array
       const { store, stateMap } = item
       if (store instanceof WxStore && (type(stateMap, OBJECT) || type(stateMap, ARRAY))) {
         store.bind(this, stateMap)
@@ -343,19 +346,19 @@ function Attached (ops, fixed) {
  * 取消挂载
  */
 function Detached () {
-  // 解除this上的store的绑定
-  if (noEmptyObject(this.__stores)) {
-    for (const id in this.__stores) {
-      this.__stores[id].store.unBind(this)
-    }
-    delete this.__stores
-  }
   // 解除this上的listener的绑定
   if (noEmptyObject(this.__listener)) {
     for (const id in this.__listener) {
       this.__listener[id].remove(id)
     }
     delete this.__listener
+  }
+  // 解除this上的store的绑定
+  if (noEmptyObject(this.__stores)) {
+    for (const id in this.__stores) {
+      this.__stores[id].store.unBind(this)
+    }
+    delete this.__stores
   }
   delete this.store // 删除store
 }
