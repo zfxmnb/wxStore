@@ -69,7 +69,7 @@ export default class WxStore {
       // 根据对象key 提取 state 与对于value比对
       const keyStr = toKeyStr(keys, this._state)
       // 空对象不执行diff update操作
-      if (noEmptyObject(value) || (type(value, ARRAY) && value.length)) {
+      if (noEmptyObject(value, true)) {
         // 获取diffObj
         Object.assign(this._diffObj, diff(value, getValue(this._state, keys), keyStr))
       } else {
@@ -245,7 +245,7 @@ export default class WxStore {
       map = map.split(/\s*\,\s*/g)
     }
     // map必须为obj或者arr 且fn必须为function
-    if (!(noEmptyObject(map, OBJECT) || (type(map, ARRAY) && map.length)) || !type(fn, FUNCTION)) {
+    if (!noEmptyObject(map, true) || !type(fn, FUNCTION)) {
       console.warn('[wxStore] check on params')
       return
     }
@@ -324,7 +324,7 @@ function Attached (ops, fixed) {
   ops.store = ops.store || {}
   // store必须为对象、stateMap必须为Object或Array
   if (type(ops.store, OBJECT) && (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY))) {
-    const { STOREID } = this.properties
+    const { STOREID = 0 } = this.properties || {}
     // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，fixed === true 使用页面级store， 否则通过store配置生产新的store
     this.store = ops.store instanceof WxStore ? ops.store
       : STORES[STOREID] || (!fixed && getCurrentPage(this).store) || new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
@@ -385,11 +385,6 @@ export function storePage(ops) {
 }
 
 /**
- * diff
- */
-exports.diff = diff
-
-/**
  * 重写Component方法，提供自动绑定store自定移除store方法
  * @param {*} ops 组件初始化配置
  */
@@ -412,6 +407,11 @@ export function storeComponent(ops) {
   }
   Component(ops)
 }
+
+/**
+ * diff
+ */
+exports.diff = diff
 
 /**
  * 根据 store、stateMap在页面、组件初始化配置初始化data，组件要初始化data也必须传store

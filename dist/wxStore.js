@@ -130,7 +130,7 @@ var WxStore = /*#__PURE__*/function () {
 
         var keyStr = (0, _utils.toKeyStr)(keys, _this2._state); // 空对象不执行diff update操作
 
-        if ((0, _utils.noEmptyObject)(value) || (0, _utils.type)(value, _utils.ARRAY) && value.length) {
+        if ((0, _utils.noEmptyObject)(value, true)) {
           // 获取diffObj
           Object.assign(_this2._diffObj, (0, _diff["default"])(value, (0, _utils.getValue)(_this2._state, keys), keyStr));
         } else {
@@ -353,7 +353,7 @@ var WxStore = /*#__PURE__*/function () {
       } // map必须为obj或者arr 且fn必须为function
 
 
-      if (!((0, _utils.noEmptyObject)(map, _utils.OBJECT) || (0, _utils.type)(map, _utils.ARRAY) && map.length) || !(0, _utils.type)(fn, _utils.FUNCTION)) {
+      if (!(0, _utils.noEmptyObject)(map, true) || !(0, _utils.type)(fn, _utils.FUNCTION)) {
         console.warn('[wxStore] check on params');
         return;
       } // 获取监听state的映射
@@ -454,7 +454,10 @@ function Attached(ops, fixed) {
   ops.store = ops.store || {}; // store必须为对象、stateMap必须为Object或Array
 
   if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {
-    var STOREID = this.properties.STOREID; // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，fixed === true 使用页面级store， 否则通过store配置生产新的store
+    var _ref3 = this.properties || {},
+        _ref3$STOREID = _ref3.STOREID,
+        STOREID = _ref3$STOREID === void 0 ? 0 : _ref3$STOREID; // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，fixed === true 使用页面级store， 否则通过store配置生产新的store
+
 
     this.store = ops.store instanceof WxStore ? ops.store : STORES[STOREID] || !fixed && (0, _instanceUtils.getCurrentPage)(this).store || new WxStore(ops.store); // 传入已经是WxStore实例则直接赋值，否者实例化
 
@@ -532,15 +535,10 @@ function storePage(ops) {
   Page(ops);
 }
 /**
- * diff
- */
-
-
-exports.diff = _diff["default"];
-/**
  * 重写Component方法，提供自动绑定store自定移除store方法
  * @param {*} ops 组件初始化配置
  */
+
 
 function storeComponent(ops) {
   setOptions(ops, true); // 初始化data、作用是给relateddata里面填入store中的默认state
@@ -568,11 +566,16 @@ function storeComponent(ops) {
   Component(ops);
 }
 /**
+ * diff
+ */
+
+
+exports.diff = _diff["default"];
+/**
  * 根据 store、stateMap在页面、组件初始化配置初始化data，组件要初始化data也必须传store
  * @param {*} ops 页面初始化时
  * @param {*} isComponent 组件
  */
-
 
 function setOptions(ops, isComponent) {
   if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {

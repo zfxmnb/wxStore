@@ -1,6 +1,6 @@
 {
   "name": "@fanx/wxstore",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "wechat miniprogram store manager",
   "main": "dist/wxStore.js",
   "repository": {
@@ -8,10 +8,19 @@
     "url": "git+https://github.com/zfxmnb/wxStore.git"
   },
   "keywords": [
+    "weixin",
     "wechat",
     "miniprogram",
+    "weapp",
+    "westore",
+    "wxstore",
     "store",
-    "wx"
+    "state",
+    "mini",
+    "wx",
+    "we",
+    "微信",
+    "小程序"
   ],
   "scripts": {
     "commit": "git-cz",

@@ -50,11 +50,16 @@ function type(val, str) {
 /**
  * 对象对象判空
  * @param {*} obj 
+ * @param {*} containArr 是否需要包含数组
  */
 
 
-function noEmptyObject(obj) {
-  return !!(type(obj, OBJECT) && Object.keys(obj).length);
+function noEmptyObject(obj, containArr) {
+  if (containArr && type(obj, ARRAY) || type(obj, OBJECT)) {
+    return !!Object.keys(obj).length;
+  }
+
+  return false;
 }
 /**
  * 深拷贝(循环引用、递归栈异常优化)

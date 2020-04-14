@@ -28,9 +28,13 @@ export function type(val, str) {
 /**
  * 对象对象判空
  * @param {*} obj 
+ * @param {*} containArr 是否需要包含数组
  */
-export function noEmptyObject(obj) {
-  return !!(type(obj, OBJECT) && Object.keys(obj).length)
+export function noEmptyObject(obj, containArr) {
+  if (containArr && type(obj, ARRAY) || type(obj, OBJECT)) {
+    return !!Object.keys(obj).length
+  }
+  return false
 }
 
 /**
