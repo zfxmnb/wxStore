@@ -6,7 +6,7 @@ export const OBJECT = 'Object'
 export const ARRAY = 'Array'
 export const FUNCTION = 'Function'
 export const UNDEFINED = 'Undefined'
-export function type(val, str) {
+export function type (val, str) {
   let typeStr
   if (typeof val === 'string') {
     typeStr = STRING
@@ -27,11 +27,11 @@ export function type(val, str) {
 
 /**
  * 对象对象判空
- * @param {*} obj 
+ * @param {*} obj
  * @param {*} containArr 是否需要包含数组
  */
-export function noEmptyObject(obj, containArr) {
-  if (containArr && type(obj, ARRAY) || type(obj, OBJECT)) {
+export function noEmptyObject (obj, containArr) {
+  if ((containArr && type(obj, ARRAY)) || type(obj, OBJECT)) {
     return !!Object.keys(obj).length
   }
   return false
@@ -41,7 +41,7 @@ export function noEmptyObject(obj, containArr) {
  * 深拷贝(循环引用、递归栈异常优化)
  * @param {*} Obj 对象
  */
-export function deepClone(Obj) {
+export function deepClone (Obj) {
   let buf
   if (Obj instanceof Array) {
     buf = [] // 创建一个空的数组
@@ -64,7 +64,7 @@ export function deepClone(Obj) {
 /**
  * key字符转换为数组
  */
-export function toKeys(keyStr) {
+export function toKeys (keyStr) {
   return keyStr.match(/(?:(?!\.|\[|\])\S)+/g) || []
 }
 
@@ -73,7 +73,7 @@ export function toKeys(keyStr) {
  * @param {*} keys key 数组
  * @param {*} data 对象对象
  */
-export function toKeyStr(keys, data = {}, index = 0) {
+export function toKeyStr (keys, data = {}, index = 0) {
   let str = ''
   if (data instanceof Array) {
     str += `[${keys[index]}]`
@@ -93,7 +93,7 @@ export function toKeyStr(keys, data = {}, index = 0) {
  *  对象转换
  * @param {*} obj 传入映射map
  */
-export function reverse(obj) {
+export function reverse (obj) {
   const newObj = {}
   const isArray = type(obj, ARRAY)
   for (const key in obj) {
@@ -109,9 +109,9 @@ export function reverse(obj) {
  * @param {*} data 数据对象
  * @param {*} keys 关系key
  */
-export function getValue(data, keys) {
+export function getValue (data, keys) {
   if (!keys.length) {
-    console.warn(`${ relKey } is not valid`)
+    console.warn(`${keys} is not valid`)
     return
   }
   let obj = data
@@ -120,7 +120,7 @@ export function getValue(data, keys) {
       obj = obj[keys[i]]
     } else {
       obj = undefined
-      console.warn(`${ relKey } is not valid`)
+      console.warn(`${keys} is not valid`)
       break
     }
   }
@@ -133,7 +133,7 @@ export function getValue(data, keys) {
  * @param {*} keys 关系key
  * @param {*} data 需要 set 数据
  */
-export function setValue(data, keys, value) {
+export function setValue (data, keys, value) {
   if (!keys.length) {
     return
   }
@@ -153,11 +153,11 @@ export function setValue(data, keys, value) {
 
 /**
  * 定义静态属性
- * @param {*} obj 
+ * @param {*} obj
  * @param {*} key
  * @param {*} value
  */
-export function defineStatic(obj, key, value) {
+export function defineStatic (obj, key, value) {
   if (type(obj, OBJECT)) {
     if (type(key, OBJECT)) {
       const properties = {}

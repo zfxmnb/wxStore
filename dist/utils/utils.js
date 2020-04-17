@@ -49,7 +49,7 @@ function type(val, str) {
 }
 /**
  * 对象对象判空
- * @param {*} obj 
+ * @param {*} obj
  * @param {*} containArr 是否需要包含数组
  */
 
@@ -154,7 +154,7 @@ function reverse(obj) {
 
 function getValue(data, keys) {
   if (!keys.length) {
-    console.warn("".concat(relKey, " is not valid"));
+    console.warn("".concat(keys, " is not valid"));
     return;
   }
 
@@ -165,7 +165,7 @@ function getValue(data, keys) {
       obj = obj[keys[i]];
     } else {
       obj = undefined;
-      console.warn("".concat(relKey, " is not valid"));
+      console.warn("".concat(keys, " is not valid"));
       break;
     }
   }
@@ -202,7 +202,7 @@ function setValue(data, keys, value) {
 }
 /**
  * 定义静态属性
- * @param {*} obj 
+ * @param {*} obj
  * @param {*} key
  * @param {*} value
  */

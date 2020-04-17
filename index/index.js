@@ -24,7 +24,7 @@ storePage({
       url: '/game/game'
     })
   },
-  
+
   clear () {
     globel.actions.clear()
   }

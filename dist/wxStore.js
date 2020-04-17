@@ -194,6 +194,7 @@ var WxStore = /*#__PURE__*/function () {
       var _this3 = this;
 
       // Promise实现合并set
+      // eslint-disable-next-line no-return-assign
       return this._pendding = this._pendding || Promise.resolve().then(function () {
         return _this3._set();
       });
@@ -349,6 +350,7 @@ var WxStore = /*#__PURE__*/function () {
     key: "on",
     value: function on(map, fn, that) {
       if ((0, _utils.type)(map, _utils.STRING)) {
+        // eslint-disable-next-line no-useless-escape
         map = map.split(/\s*\,\s*/g);
       } // map必须为obj或者arr 且fn必须为function
 
@@ -417,7 +419,7 @@ var WxStore = /*#__PURE__*/function () {
     }
     /**
      * 监听的对象是否修改
-     * @param {*} map 
+     * @param {*} map
      */
 
   }, {
@@ -598,8 +600,8 @@ function setOptions(ops, isComponent) {
 }
 /**
  * 初始化数据
- * @param {*} map 
- * @param {*} data 
+ * @param {*} map
+ * @param {*} data
  */
 
 

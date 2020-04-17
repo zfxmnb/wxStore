@@ -5,7 +5,7 @@ export default {
   },
   actions: {
     // 点击
-    click() {
+    click () {
       this.state.count++
       this.update().then((diff) => {
         // console.log(diff)

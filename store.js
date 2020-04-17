@@ -14,7 +14,7 @@ export default new WxStore({
   state: localData || defaultState,
   actions: {
     // 更新分数
-    addScore(score) {
+    addScore (score) {
       const { scores } = this.state
       const { records, maxScore } = scores
       // 数组形式获取

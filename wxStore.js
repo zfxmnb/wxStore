@@ -12,7 +12,7 @@ const STORES = {} // store 实例集
 let storeId = 1 // store id
 let listenerId = 1 // 监听器id
 export default class WxStore {
-  constructor({ state = {}, actions = {}, debug = false } = {}) {
+  constructor ({ state = {}, actions = {}, debug = false } = {}) {
     this._state = deepClone(state)
     if (supportProxy) {
       defineStatic(this, 'state', deepProxy(deepClone(state), this._observer.bind(this))) // 监听对象变化
@@ -57,7 +57,7 @@ export default class WxStore {
         i++
       }
     }
-    this._observerList.push({keys, value})
+    this._observerList.push({ keys, value })
   }
 
   /**
@@ -82,12 +82,12 @@ export default class WxStore {
     })
     this._observerList = []
   }
-  
+
   /**
    * 设置state
    * @param {*} obj set数据对象
    */
-  _diffSet() {
+  _diffSet () {
     // 获取diffObj
     Object.assign(this._diffObj, deepClone(diff(this.state, this._state)))
     // 写入store state
@@ -102,7 +102,7 @@ export default class WxStore {
    * @param {*} obj 更新对象
    * @param {*} imm 是否立即更新视图
    */
-  update(obj, imm) {
+  update (obj, imm) {
     // 支持update写入更改state
     if (type(obj, OBJECT)) {
       for (const key in obj) {
@@ -124,6 +124,7 @@ export default class WxStore {
    */
   _merge () {
     // Promise实现合并set
+    // eslint-disable-next-line no-return-assign
     return this._pendding = this._pendding || Promise.resolve().then(() => {
       return this._set()
     })
@@ -132,7 +133,7 @@ export default class WxStore {
   /**
    * 设置映射数据
    */
-  _set() {
+  _set () {
     return new Promise((resolve) => {
       if (supportProxy) {
         // 支持Proxy的
@@ -143,7 +144,7 @@ export default class WxStore {
       }
       if (noEmptyObject(this._diffObj)) {
         let count = 0
-        let diffObj = { ...this._diffObj }
+        const diffObj = { ...this._diffObj }
         // 实例更新
         this._binds.forEach((that) => {
           // 获取diffObj => 实例的新的diff数据
@@ -188,7 +189,7 @@ export default class WxStore {
    * @param {*} map state => 实例data 的映射map
    * @param {*} extend bind时映射到data的扩展字段
    */
-  bind(that, map, extend = {}) {
+  bind (that, map, extend = {}) {
     // 必须为实例对象
     if (!type(that, OBJECT)) {
       console.warn('[wxStore] check bind this')
@@ -220,7 +221,7 @@ export default class WxStore {
    * 解除绑定
    * @param {*} that 实例Page/Component
    */
-  unBind(that) {
+  unBind (that) {
     that.__stores && (delete that.__stores[this._id]) // 清除状态管理对象映射对象
     // 移除实例绑定
     for (var i = 0; i < this._binds.length; i++) {
@@ -240,8 +241,9 @@ export default class WxStore {
    * @param {*} map 监听的数据映射
    * @param {*} fn 监听回调
    */
-  on(map, fn, that) {
+  on (map, fn, that) {
     if (type(map, STRING)) {
+      // eslint-disable-next-line no-useless-escape
       map = map.split(/\s*\,\s*/g)
     }
     // map必须为obj或者arr 且fn必须为function
@@ -270,7 +272,7 @@ export default class WxStore {
   * 移除监听状态改变
   * @param {*} id listener的id
   */
-  remove(id) {
+  remove (id) {
     if (this._listener[id]) {
       delete this._listener[id]
     }
@@ -280,7 +282,7 @@ export default class WxStore {
    * 根据具体diff 及 映射map 获得最终setData对象
    * @param {*} map 映射map
    */
-  _getMapData(map) {
+  _getMapData (map) {
     if (!noEmptyObject(map)) return {}
     const obj = {}
     // diff结果与映射的双重比对
@@ -300,9 +302,9 @@ export default class WxStore {
 
   /**
    * 监听的对象是否修改
-   * @param {*} map 
+   * @param {*} map
    */
-  _isChange(map) {
+  _isChange (map) {
     // diff结果与映射的双重比对
     const reg = RegExp(`^(${map.join('|')})((?=(?:\\.|\\[))|$)`)
     for (const key in this._diffObj) {
@@ -328,7 +330,7 @@ function Attached (ops, fixed) {
     // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，fixed === true 使用页面级store， 否则通过store配置生产新的store
     this.store = ops.store instanceof WxStore ? ops.store
       : STORES[STOREID] || (!fixed && getCurrentPage(this).store) || new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
-    this.store.bind(this, ops.stateMap, fixed ? { STOREID: this.store._id }: {}) // 绑定是不初始化data、在实例生产前已写入options中
+    this.store.bind(this, ops.stateMap, fixed ? { STOREID: this.store._id } : {}) // 绑定是不初始化data、在实例生产前已写入options中
   }
   // stores 必须为数组
   if (type(ops.stores, ARRAY)) {
@@ -367,7 +369,7 @@ function Detached () {
  * 重写Page方法，提供自动绑定store自定移除store方法
  * @param {*} ops 页面初始化配置
  */
-export function storePage(ops) {
+export function storePage (ops) {
   setOptions(ops) // 初始化data、作用是给data里面填入store中的默认state
   // 重写onLoad
   const onLoad = ops.onLoad
@@ -388,7 +390,7 @@ export function storePage(ops) {
  * 重写Component方法，提供自动绑定store自定移除store方法
  * @param {*} ops 组件初始化配置
  */
-export function storeComponent(ops) {
+export function storeComponent (ops) {
   setOptions(ops, true) // 初始化data、作用是给relateddata里面填入store中的默认state
   const name = ops.fixed ? 'attached' : 'ready'
   let opts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops
@@ -418,7 +420,7 @@ exports.diff = diff
  * @param {*} ops 页面初始化时
  * @param {*} isComponent 组件
  */
-function setOptions(ops, isComponent) {
+function setOptions (ops, isComponent) {
   if (type(ops.store, OBJECT) && (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY))) {
     const reverseMap = reverse(ops.stateMap)
     const obj = initData(reverseMap, ops.store.state) // 初始化实例的data
@@ -437,10 +439,10 @@ function setOptions(ops, isComponent) {
 
 /**
  * 初始化数据
- * @param {*} map 
- * @param {*} data 
+ * @param {*} map
+ * @param {*} data
  */
-function initData(map, data) {
+function initData (map, data) {
   const obj = {} // 初始化实例的data
   if (noEmptyObject(map) && type(data, OBJECT)) {
     // 在初始化实例data使用

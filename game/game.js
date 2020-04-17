@@ -13,5 +13,5 @@ storePage({
     }
   }],
   data: {},
-  onLoad () {},
+  onLoad () {}
 })
