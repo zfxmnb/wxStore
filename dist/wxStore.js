@@ -591,9 +591,9 @@ function setOptions(ops, isComponent) {
 
   if (isComponent) {
     ops.properties = ops.properties || {};
-    ops.properties = {
+    Object.assign(ops.properties, {
       STOREID: Number
-    };
+    });
   }
 
   return ops;
