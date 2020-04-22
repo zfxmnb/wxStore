@@ -430,9 +430,9 @@ function setOptions (ops, isComponent) {
   // 给组件注入STOREID属性
   if (isComponent) {
     ops.properties = ops.properties || {}
-    ops.properties = {
+    Object.assign(ops.properties, {
       STOREID: Number
-    }
+    })
   }
   return ops
 }
