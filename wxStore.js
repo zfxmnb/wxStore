@@ -314,6 +314,15 @@ export default class WxStore {
     }
     return false
   }
+
+  /**
+   * 通过字符串key获取value
+   */
+  getValue (key) {
+    if (type(key, STRING)) {
+      return deepClone(getValue(this._state, toKeys(key)))
+    }
+  }
 }
 
 /**

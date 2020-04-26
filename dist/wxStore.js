@@ -436,6 +436,17 @@ var WxStore = /*#__PURE__*/function () {
 
       return false;
     }
+    /**
+     * 通过字符串key获取value
+     */
+
+  }, {
+    key: "getValue",
+    value: function getValue(key) {
+      if ((0, _utils.type)(key, _utils.STRING)) {
+        return (0, _utils.deepClone)((0, _utils.getValue)(this._state, (0, _utils.toKeys)(key)));
+      }
+    }
   }]);
 
   return WxStore;
