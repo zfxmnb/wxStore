@@ -318,7 +318,7 @@ export default class WxStore {
   /**
    * 通过字符串key获取value
    */
-  getValue (key) {
+  getState (key) {
     if (type(key, STRING)) {
       return deepClone(getValue(this._state, toKeys(key)))
     }

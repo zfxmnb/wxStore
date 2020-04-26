@@ -441,8 +441,8 @@ var WxStore = /*#__PURE__*/function () {
      */
 
   }, {
-    key: "getValue",
-    value: function getValue(key) {
+    key: "getState",
+    value: function getState(key) {
       if ((0, _utils.type)(key, _utils.STRING)) {
         return (0, _utils.deepClone)((0, _utils.getValue)(this._state, (0, _utils.toKeys)(key)));
       }

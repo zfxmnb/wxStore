@@ -49,7 +49,7 @@ wxStore 提供8个方法:
 * store.on(stateMap, fn, this)     监听stateMap中的数据改动，return id，并在fn回调中返回结果，使用场景为不更新视图的state变化, this为页面/组件实例，用于页面/组件销毁时自动remove
 * store.remove(id)    清除监听器，id = store.on, 页面组件销毁前主动调用清除
 * store.update()    用于更新state状态改变，返回Promise实例
-* store.getValue(key)     通过这个方法复制获取想要的value
+* store.getState(key)     通过这个方法复制获取想要的value
 
 纯组件使用小程序自带的 Component
 
