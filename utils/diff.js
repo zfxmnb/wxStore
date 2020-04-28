@@ -33,7 +33,7 @@ export default function diff (current, pre, prefix = '', performance) {
     }
   } else if (type(pre, OBJECT) && type(current, OBJECT)) {
     // 对象
-    const keys = Object.keys(pre)
+    const keys = Object.keys(current)
     keys.forEach((key) => {
       Object.assign(diffObj, diff(current[key], pre[key], `${prefix ? `${prefix}.${key}` : key}`, performance))
     })

@@ -39,7 +39,7 @@ function diff(current, pre) {
     }
   } else if ((0, _utils.type)(pre, _utils.OBJECT) && (0, _utils.type)(current, _utils.OBJECT)) {
     // 对象
-    var keys = Object.keys(pre);
+    var keys = Object.keys(current);
     keys.forEach(function (key) {
       Object.assign(diffObj, diff(current[key], pre[key], "".concat(prefix ? "".concat(prefix, ".").concat(key) : key), performance));
     });

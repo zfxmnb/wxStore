@@ -1,6 +1,6 @@
 {
   "name": "@fanx/wxstore",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "wechat miniprogram store manager",
   "main": "dist/wxStore.js",
   "repository": {
