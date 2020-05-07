@@ -454,31 +454,16 @@ var WxStore = /*#__PURE__*/function () {
 /**
  * 挂载
  * @param {*} ops 实例配置
- * @param {*} fixed 组件是否脱离Page store采用自己的store
  */
 
 
 exports["default"] = WxStore;
 
-function Attached(ops, fixed) {
+function Attached(ops) {
   var _this5 = this;
 
   ops.stateMap = ops.stateMap || {};
-  ops.store = ops.store || {}; // store必须为对象、stateMap必须为Object或Array
-
-  if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {
-    var _ref3 = this.properties || {},
-        _ref3$STOREID = _ref3.STOREID,
-        STOREID = _ref3$STOREID === void 0 ? 0 : _ref3$STOREID; // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，fixed === true 使用页面级store， 否则通过store配置生产新的store
-
-
-    this.store = ops.store instanceof WxStore ? ops.store : STORES[STOREID] || !fixed && (0, _instanceUtils.getCurrentPage)(this).store || new WxStore(ops.store); // 传入已经是WxStore实例则直接赋值，否者实例化
-
-    this.store.bind(this, ops.stateMap, fixed ? {
-      STOREID: this.store._id
-    } : {}); // 绑定是不初始化data、在实例生产前已写入options中
-  } // stores 必须为数组
-
+  ops.store = ops.store || {}; // stores 必须为数组
 
   if ((0, _utils.type)(ops.stores, _utils.ARRAY)) {
     ops.stores.forEach(function () {
@@ -491,6 +476,20 @@ function Attached(ops, fixed) {
         store.bind(_this5, stateMap);
       }
     });
+  } // store必须为对象、stateMap必须为Object或Array
+
+
+  if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {
+    var _ref3 = this.properties || {},
+        _ref3$STOREID = _ref3.STOREID,
+        STOREID = _ref3$STOREID === void 0 ? 0 : _ref3$STOREID; // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，ops.fixed === true 使用页面级store， 否则通过store配置生产新的store
+
+
+    this.store = ops.store instanceof WxStore ? ops.store : STORES[STOREID] || !ops.fixed && (0, _instanceUtils.getCurrentPage)(this).store || new WxStore(ops.store); // 传入已经是WxStore实例则直接赋值，否者实例化
+
+    this.store.bind(this, ops.stateMap, ops.fixed ? {
+      STOREID: this.store._id
+    } : {}); // 绑定是不初始化data、在实例生产前已写入options中
   }
 }
 /**
@@ -532,7 +531,9 @@ function storePage(ops) {
   var onLoad = ops.onLoad;
 
   ops.onLoad = function () {
-    Attached.call(this, ops, true);
+    ops.fixed = true;
+    Attached.call(this, ops);
+    (0, _instanceUtils.pushTabPage)(this);
     (0, _utils.type)(onLoad, _utils.FUNCTION) && onLoad.apply(this, [].slice.call(arguments));
   }; // 重写onUnload
 
@@ -542,6 +543,7 @@ function storePage(ops) {
   ops.onUnload = function () {
     (0, _utils.type)(onUnload, _utils.FUNCTION) && onUnload.apply(this, [].slice.call(arguments)); // 执行卸载操作
 
+    (0, _instanceUtils.shiftTabPage)(this);
     Detached.call(this);
   };
 
@@ -557,20 +559,20 @@ function storeComponent(ops) {
   setOptions(ops, true); // 初始化data、作用是给relateddata里面填入store中的默认state
 
   var name = ops.fixed ? 'attached' : 'ready';
-  var opts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops; // 重写ready
+  var lts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops; // 重写ready
 
-  var init = opts[name];
+  var init = lts[name];
 
-  opts[name] = function () {
-    Attached.call(this, ops, ops.fixed);
+  lts[name] = function () {
+    Attached.call(this, ops);
     (0, _utils.type)(init, _utils.FUNCTION) && init.apply(this, [].slice.call(arguments));
   };
 
-  opts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops; // 重写detached
+  lts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops; // 重写detached
 
-  var detached = opts.detached;
+  var detached = lts.detached;
 
-  opts.detached = function () {
+  lts.detached = function () {
     (0, _utils.type)(detached, _utils.FUNCTION) && detached.apply(this, [].slice.call(arguments)); // 执行卸载操作
 
     Detached.call(this);

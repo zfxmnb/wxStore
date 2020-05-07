@@ -25,3 +25,7 @@ global.Component = (options) => {
   component.attached.call(component)
   return component
 }
+
+global.getCurrentPages = () => {
+  return [{}]
+}

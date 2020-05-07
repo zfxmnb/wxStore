@@ -6,7 +6,7 @@
 import deepProxy from './utils/observer'
 import diff from './utils/diff'
 import { deepClone, toKeys, toKeyStr, noEmptyObject, reverse, getValue, setValue, defineStatic, type, OBJECT, ARRAY, FUNCTION, STRING } from './utils/utils'
-import { getCurrentPage } from './utils/instanceUtils'
+import { getCurrentPage, pushTabPage, shiftTabPage } from './utils/instanceUtils'
 const supportProxy = !!Proxy // 是否支持Proxy
 const STORES = {} // store 实例集
 let storeId = 1 // store id
@@ -328,19 +328,10 @@ export default class WxStore {
 /**
  * 挂载
  * @param {*} ops 实例配置
- * @param {*} fixed 组件是否脱离Page store采用自己的store
  */
-function Attached (ops, fixed) {
+function Attached (ops) {
   ops.stateMap = ops.stateMap || {}
   ops.store = ops.store || {}
-  // store必须为对象、stateMap必须为Object或Array
-  if (type(ops.store, OBJECT) && (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY))) {
-    const { STOREID = 0 } = this.properties || {}
-    // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，fixed === true 使用页面级store， 否则通过store配置生产新的store
-    this.store = ops.store instanceof WxStore ? ops.store
-      : STORES[STOREID] || (!fixed && getCurrentPage(this).store) || new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
-    this.store.bind(this, ops.stateMap, fixed ? { STOREID: this.store._id } : {}) // 绑定是不初始化data、在实例生产前已写入options中
-  }
   // stores 必须为数组
   if (type(ops.stores, ARRAY)) {
     ops.stores.forEach((item = {}) => {
@@ -350,6 +341,14 @@ function Attached (ops, fixed) {
         store.bind(this, stateMap)
       }
     })
+  }
+  // store必须为对象、stateMap必须为Object或Array
+  if (type(ops.store, OBJECT) && (type(ops.stateMap, OBJECT) || type(ops.stateMap, ARRAY))) {
+    const { STOREID = 0 } = this.properties || {}
+    // store 如果是Wxstore的实例则直接使用，否则使用id为STOREID的store，ops.fixed === true 使用页面级store， 否则通过store配置生产新的store
+    this.store = ops.store instanceof WxStore ? ops.store
+      : STORES[STOREID] || (!ops.fixed && getCurrentPage(this).store) || new WxStore(ops.store) // 传入已经是WxStore实例则直接赋值，否者实例化
+    this.store.bind(this, ops.stateMap, ops.fixed ? { STOREID: this.store._id } : {}) // 绑定是不初始化data、在实例生产前已写入options中
   }
 }
 
@@ -383,13 +382,16 @@ export function storePage (ops) {
   // 重写onLoad
   const onLoad = ops.onLoad
   ops.onLoad = function () {
-    Attached.call(this, ops, true)
+    ops.fixed = true
+    Attached.call(this, ops)
+    pushTabPage(this)
     type(onLoad, FUNCTION) && onLoad.apply(this, [].slice.call(arguments))
   }
   // 重写onUnload
   const onUnload = ops.onUnload
   ops.onUnload = function () {
     type(onUnload, FUNCTION) && onUnload.apply(this, [].slice.call(arguments)) // 执行卸载操作
+    shiftTabPage(this)
     Detached.call(this)
   }
   Page(ops)
@@ -402,17 +404,17 @@ export function storePage (ops) {
 export function storeComponent (ops) {
   setOptions(ops, true) // 初始化data、作用是给relateddata里面填入store中的默认state
   const name = ops.fixed ? 'attached' : 'ready'
-  let opts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops
+  let lts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops
   // 重写ready
-  const init = opts[name]
-  opts[name] = function () {
-    Attached.call(this, ops, ops.fixed)
+  const init = lts[name]
+  lts[name] = function () {
+    Attached.call(this, ops)
     type(init, FUNCTION) && init.apply(this, [].slice.call(arguments))
   }
-  opts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops
+  lts = ops.lifetimes && ops.lifetimes.detached ? ops.lifetimes : ops
   // 重写detached
-  const detached = opts.detached
-  opts.detached = function () {
+  const detached = lts.detached
+  lts.detached = function () {
     type(detached, FUNCTION) && detached.apply(this, [].slice.call(arguments)) // 执行卸载操作
     Detached.call(this)
   }
