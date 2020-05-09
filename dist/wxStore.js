@@ -268,7 +268,7 @@ var WxStore = /*#__PURE__*/function () {
     /**
      * 绑定对象
      * @param {*} that 实例Page/Component
-     * @param {*} map state => 实例data 的映射map
+     * @param {*} map 实例data => state 的映射map
      * @param {*} extend bind时映射到data的扩展字段
      */
 
@@ -287,16 +287,34 @@ var WxStore = /*#__PURE__*/function () {
       if (!(0, _utils.type)(map, _utils.OBJECT) && !(0, _utils.type)(map, _utils.ARRAY)) {
         console.warn('[wxStore] check bind stateMap');
         map = {};
+      }
+
+      var stateMap = (0, _utils.reverse)(map);
+
+      this._bind(that, stateMap, extend);
+    }
+    /**
+     * 绑定对象
+     * @param {*} that 实例Page/Component
+     * @param {*} stateMap state => 实例data 的映射map
+     * @param {*} extend bind时映射到data的扩展字段
+     */
+
+  }, {
+    key: "_bind",
+    value: function _bind(that, stateMap) {
+      var extend = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+      // 必须是obj或者arr
+      if (!(0, _utils.type)(stateMap, _utils.OBJECT) && !(0, _utils.type)(stateMap, _utils.ARRAY)) {
+        console.warn('[wxStore] check bind stateMap');
+        stateMap = {};
       } // 获取state=>实例data的指向
 
 
       var id = this._id;
-      var stateMap = (0, _utils.reverse)(map);
-      var obj = initData(stateMap, this._state); // 初始化实例的data
-
-      Object.assign(obj, extend); // bind 初始化setData扩展字段
-
-      that.setData(obj); // 执行set
+      var setter = (0, _diff["default"])(Object.assign(setData(stateMap, this._state), extend), that.data);
+      that.setData(setter); // 执行set
 
       that.__stores = (0, _utils.type)(that.__stores, _utils.OBJECT) ? that.__stores : {}; // 初始化实例对象上的状态映射表
       // 映射对象写入实例对象
@@ -470,10 +488,11 @@ function Attached(ops) {
       var item = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
       // store必须为WxStore对象、stateMap必须为Object或Array
       var store = item.store,
-          stateMap = item.stateMap;
+          stateMap = item.stateMap,
+          _rstateMap = item._rstateMap;
 
-      if (store instanceof WxStore && ((0, _utils.type)(stateMap, _utils.OBJECT) || (0, _utils.type)(stateMap, _utils.ARRAY))) {
-        store.bind(_this5, stateMap);
+      if (store instanceof WxStore && (0, _utils.noEmptyObject)(stateMap, true)) {
+        _rstateMap ? store._bind(_this5, _rstateMap) : store.bind(_this5, stateMap);
       }
     });
   } // store必须为对象、stateMap必须为Object或Array
@@ -487,9 +506,10 @@ function Attached(ops) {
 
     this.store = ops.store instanceof WxStore ? ops.store : STORES[STOREID] || !ops.fixed && (0, _instanceUtils.getCurrentPage)(this).store || new WxStore(ops.store); // 传入已经是WxStore实例则直接赋值，否者实例化
 
-    this.store.bind(this, ops.stateMap, ops.fixed ? {
+    var extend = ops.fixed ? {
       STOREID: this.store._id
-    } : {}); // 绑定是不初始化data、在实例生产前已写入options中
+    } : {};
+    ops._rstateMap ? this.store._bind(this, this._rstateMap, extend) : this.store.bind(this, ops.stateMap, extend); // 绑定是不初始化data、在实例生产前已写入options中
   }
 }
 /**
@@ -525,7 +545,7 @@ function Detached() {
 
 
 function storePage(ops) {
-  setOptions(ops); // 初始化data、作用是给data里面填入store中的默认state
+  initData(ops); // 初始化data、作用是给data里面填入store中的默认state
   // 重写onLoad
 
   var onLoad = ops.onLoad;
@@ -556,8 +576,12 @@ function storePage(ops) {
 
 
 function storeComponent(ops) {
-  setOptions(ops, true); // 初始化data、作用是给relateddata里面填入store中的默认state
+  initData(ops); // 初始化data、作用是给relateddata里面填入store中的默认state
 
+  ops.properties = (0, _utils.type)(ops.properties, _utils.OBJECT) ? ops.properties : {};
+  Object.assign(ops.properties, {
+    STOREID: Number
+  });
   var name = ops.fixed ? 'attached' : 'ready';
   var lts = ops.lifetimes && ops.lifetimes[name] ? ops.lifetimes : ops; // 重写ready
 
@@ -587,38 +611,12 @@ function storeComponent(ops) {
 
 exports.diff = _diff["default"];
 /**
- * 根据 store、stateMap在页面、组件初始化配置初始化data，组件要初始化data也必须传store
- * @param {*} ops 页面初始化时
- * @param {*} isComponent 组件
- */
-
-function setOptions(ops, isComponent) {
-  if ((0, _utils.type)(ops.store, _utils.OBJECT) && ((0, _utils.type)(ops.stateMap, _utils.OBJECT) || (0, _utils.type)(ops.stateMap, _utils.ARRAY))) {
-    var reverseMap = (0, _utils.reverse)(ops.stateMap);
-    var obj = initData(reverseMap, ops.store.state); // 初始化实例的data
-
-    ops.data = (0, _utils.type)(ops.data, _utils.OBJECT) ? ops.data : {};
-    Object.assign(ops.data, obj);
-  } // 给组件注入STOREID属性
-
-
-  if (isComponent) {
-    ops.properties = ops.properties || {};
-    Object.assign(ops.properties, {
-      STOREID: Number
-    });
-  }
-
-  return ops;
-}
-/**
  * 初始化数据
  * @param {*} map
  * @param {*} data
  */
 
-
-function initData(map, data) {
+function setData(map, data) {
   var obj = {}; // 初始化实例的data
 
   if ((0, _utils.noEmptyObject)(map) && (0, _utils.type)(data, _utils.OBJECT)) {
@@ -630,4 +628,34 @@ function initData(map, data) {
   }
 
   return obj;
+}
+/**
+ * 初始化数据
+ * @param {*} map
+ * @param {*} data
+ */
+
+
+function initData(ops) {
+  var data = {};
+
+  if ((0, _utils.type)(ops.stores, _utils.ARRAY)) {
+    ops.stores = ops.stores.map(function (s) {
+      if ((0, _utils.type)(s.store, _utils.OBJECT) && (0, _utils.noEmptyObject)(s.stateMap, true)) {
+        s._rstateMap = (0, _utils.reverse)(s.stateMap);
+        Object.assign(data, setData(s._rstateMap, s.store._state || s.store.state));
+      }
+
+      return s;
+    });
+  }
+
+  if ((0, _utils.type)(ops.store, _utils.OBJECT) && (0, _utils.noEmptyObject)(ops.stateMap, true)) {
+    ops._rstateMap = (0, _utils.reverse)(ops.stateMap);
+    Object.assign(data, setData(ops._rstateMap, ops.store._state || ops.store.state));
+  }
+
+  ops.data = (0, _utils.type)(ops.data, _utils.OBJECT) ? ops.data : {};
+  Object.assign(ops.data, data);
+  return data;
 }
